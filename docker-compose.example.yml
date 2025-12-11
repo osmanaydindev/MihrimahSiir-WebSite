@@ -1,0 +1,47 @@
+version: '3.8'
+
+# Example Docker Compose file
+# Copy docker-compose.yml, docker-compose.local.yml or docker-compose.vps.yml based on your environment
+# Then configure with .env.docker file
+
+services:
+  database:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-poem_blog_locale}
+      POSTGRES_USER: ${DB_USER:-your_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - poem_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - ./backend/.env
+    environment:
+      DB_HOST: database
+    depends_on:
+      - database
+    networks:
+      - poem_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      - backend
+    networks:
+      - poem_network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  poem_network:
+    driver: bridge
