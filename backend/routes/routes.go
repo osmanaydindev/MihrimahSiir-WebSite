@@ -11,6 +11,11 @@ func Setup(app *fiber.App) {
 	// (5 attempts per 15 minutes)
 	app.Post("/register", middlewares.AuthRateLimiter(), controllers.Register)
 	app.Post("/login", middlewares.AuthRateLimiter(), controllers.Login)
+	app.Get("/verify-email", middlewares.AuthRateLimiter(), controllers.VerifyEmail)
+	app.Post("/resend-verification", middlewares.AuthRateLimiter(), controllers.ResendVerification)
+	app.Post("/update-verification-email", middlewares.AuthRateLimiter(), controllers.UpdateEmailForVerification)
+	app.Post("/forgot-password", middlewares.AuthRateLimiter(), controllers.ForgotPassword)
+	app.Post("/reset-password", middlewares.AuthRateLimiter(), controllers.ResetPassword)
 
 	SetupWebSocketRoutes(app)
 

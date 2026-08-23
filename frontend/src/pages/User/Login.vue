@@ -23,11 +23,23 @@ const loading = ref(false);
 const router = useRouter()
 const showPassword = ref(false);
 const popup = ref(false);
+const popupTitle = ref("Giriş Başarısız");
+const popupMessage = ref("Lütfen kullanıcı adınızı ve şifrenizi kontrol ediniz.");
+const verifyDialog = ref(false);
+const forgotDialog = ref(false);
+const accountUsername = ref("");
+const accountPassword = ref("");
+const accountEmail = ref("");
+const accountPhone = ref("");
+const forgotIdentifier = ref("");
+const secondaryLoading = ref(false);
 const togglePasswordVisibility = () => {
   showPassword.value = !showPassword.value;
 };
-const openPopup = () =>{
+const openPopup = (message = "Lütfen kullanıcı adınızı ve şifrenizi kontrol ediniz.", title = "Giriş Başarısız") =>{
   loading.value = false;
+  popupTitle.value = title;
+  popupMessage.value = message;
   popup.value = true;
 }
 const closePopup = () => {
@@ -44,11 +56,65 @@ const submitLogin = handleSubmit(async (values) => {
     localStorage.setItem("token", resp.data.cookie.value);
     loading.value = false;
     await router.push("/home");
-  } catch (error) {
-    openPopup();
+  } catch (error: any) {
+    if (error.response?.data?.code === "EMAIL_NOT_VERIFIED") {
+      accountUsername.value = values.username;
+      accountPassword.value = values.password;
+      verifyDialog.value = true;
+      openPopup(error.response?.data?.message || "E-posta doğrulaması gerekiyor.", "E-posta Doğrulaması Gerekli");
+    } else {
+      openPopup(error.response?.data?.message || "Lütfen kullanıcı adınızı ve şifrenizi kontrol ediniz.");
+    }
   }
 
 });
+
+const resendVerification = async () => {
+  secondaryLoading.value = true;
+  try {
+    const res = await axios.post("/resend-verification", {
+      username: accountUsername.value,
+      password: accountPassword.value,
+    });
+    openPopup(res.data?.message || "Doğrulama bağlantısı gönderildi.", "İşlem Tamam");
+  } catch (error: any) {
+    openPopup(error.response?.data?.message || "Doğrulama bağlantısı gönderilemedi.");
+  } finally {
+    secondaryLoading.value = false;
+  }
+};
+
+const updateVerificationEmail = async () => {
+  secondaryLoading.value = true;
+  try {
+    const res = await axios.post("/update-verification-email", {
+      username: accountUsername.value,
+      password: accountPassword.value,
+      email: accountEmail.value,
+      phone: accountPhone.value,
+    });
+    openPopup(res.data?.message || "E-posta güncellendi.", "İşlem Tamam");
+  } catch (error: any) {
+    openPopup(error.response?.data?.message || "E-posta güncellenemedi.");
+  } finally {
+    secondaryLoading.value = false;
+  }
+};
+
+const forgotPassword = async () => {
+  secondaryLoading.value = true;
+  try {
+    const res = await axios.post("/forgot-password", {
+      identifier: forgotIdentifier.value,
+    });
+    forgotDialog.value = false;
+    openPopup(res.data?.message || "Şifre sıfırlama bağlantısı gönderildi.", "Şifre Sıfırlama");
+  } catch (error: any) {
+    openPopup(error.response?.data?.message || "Şifre sıfırlama isteği gönderilemedi.");
+  } finally {
+    secondaryLoading.value = false;
+  }
+};
 </script>
 
 <template>
@@ -75,6 +141,8 @@ const submitLogin = handleSubmit(async (values) => {
               prepend-inner-icon="mdi-account"
               clearable
               color="grey-lighten-1"
+              maxlength="50"
+              autocomplete="username"
             />
           </div>
 
@@ -91,7 +159,14 @@ const submitLogin = handleSubmit(async (values) => {
               @click:append-inner="togglePasswordVisibility"
               clearable
               color="grey-lighten-1"
+              maxlength="128"
+              autocomplete="current-password"
             />
+          </div>
+
+          <div class="login-links">
+            <button type="button" @click="forgotDialog = true">Şifremi unuttum</button>
+            <button type="button" @click="verifyDialog = true">E-postamı doğrulayamıyorum</button>
           </div>
 
           <v-btn
@@ -129,16 +204,57 @@ const submitLogin = handleSubmit(async (values) => {
       <v-card class="error-dialog">
         <v-card-title class="error-dialog-title">
           <v-icon size="48" color="error" class="mb-2">mdi-alert-circle</v-icon>
-          <span>Giriş Başarısız</span>
+          <span>{{ popupTitle }}</span>
         </v-card-title>
         <v-card-text class="error-dialog-text">
-          Lütfen kullanıcı adınızı ve şifrenizi kontrol ediniz.
+          {{ popupMessage }}
         </v-card-text>
         <v-card-actions class="justify-center pb-4">
           <v-btn color="error" variant="outlined" @click="closePopup">
             Tamam
           </v-btn>
         </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="verifyDialog" max-width="520">
+      <v-card class="error-dialog">
+        <v-card-title class="text-white">E-posta Doğrulama</v-card-title>
+        <v-card-text>
+          <v-text-field v-model="accountUsername" label="Kullanıcı Adı" maxlength="50" autocomplete="username" variant="outlined" />
+          <v-text-field v-model="accountPassword" label="Şifre" maxlength="128" autocomplete="current-password" type="password" variant="outlined" />
+          <v-btn block class="text-none mb-4" color="grey-darken-3" :loading="secondaryLoading" @click="resendVerification">
+            Doğrulama Mailini Tekrar Gönder
+          </v-btn>
+          <v-divider class="my-4" />
+          <p class="text-grey-lighten-1 text-body-2 mb-3">Mail adresin yanlışsa güncelle.</p>
+          <v-text-field v-model="accountEmail" label="Yeni E-posta" maxlength="255" autocomplete="email" type="email" variant="outlined" />
+          <v-text-field v-model="accountPhone" label="Telefon" maxlength="20" autocomplete="tel" type="tel" variant="outlined" />
+          <v-btn block class="text-none" color="grey-darken-3" :loading="secondaryLoading" @click="updateVerificationEmail">
+            E-postayı Güncelle ve Doğrulama Gönder
+          </v-btn>
+        </v-card-text>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="forgotDialog" max-width="460">
+      <v-card class="error-dialog">
+        <v-card-title class="text-white">Şifremi Unuttum</v-card-title>
+        <v-card-text>
+          <p class="text-grey-lighten-1 text-body-2 mb-4">
+            Kullanıcı adını veya e-posta adresini yaz. Hesap varsa sıfırlama bağlantısı mailine gider.
+          </p>
+          <v-text-field
+            v-model="forgotIdentifier"
+            label="Kullanıcı adı veya e-posta"
+            maxlength="255"
+            variant="outlined"
+            autocomplete="username"
+          />
+          <v-btn block class="text-none" color="grey-darken-3" :loading="secondaryLoading" @click="forgotPassword">
+            Sıfırlama Bağlantısı Gönder
+          </v-btn>
+        </v-card-text>
       </v-card>
     </v-dialog>
   </div>
@@ -221,6 +337,24 @@ const submitLogin = handleSubmit(async (values) => {
   display: flex;
   flex-direction: column;
   gap: clamp(16px, 3vw, 20px);
+}
+
+.login-links {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: -4px;
+}
+
+.login-links button {
+  color: #d6d6d6;
+  font-size: 0.9rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.login-links button:hover {
+  color: #ffffff;
 }
 
 .form-field {

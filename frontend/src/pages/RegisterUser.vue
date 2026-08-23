@@ -9,6 +9,7 @@ const { handleSubmit, handleReset } = useForm({
     username(value) {
       if (!value) return "Bu alan boş bırakılamaz.";
       if (value.length < 3) return "Kullanıcı adı en az 3 karakter olmalıdır.";
+      if (value.length > 50) return "Kullanıcı adı en fazla 50 karakter olabilir.";
 
       // Boşluk kontrolü
       if (/\s/.test(value)) {
@@ -24,14 +25,25 @@ const { handleSubmit, handleReset } = useForm({
     },
     email(value) {
       if (!value) return "Bu alan boş bırakılamaz.";
+      if (value.length > 255) return "E-posta en fazla 255 karakter olabilir.";
       // Simple email validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(value)) return "Geçerli bir e-posta adresi giriniz.";
       return true;
     },
+    phone(value) {
+      if (!value) return "Bu alan boş bırakılamaz.";
+      if (value.length < 10 || value.length > 20) return "Telefon 10-20 karakter arasında olmalıdır.";
+      if (!/^\+?[0-9][0-9\s()-]{8,18}[0-9]$/.test(value)) return "Geçerli bir telefon numarası giriniz.";
+      return true;
+    },
     password(value) {
       if (!value) return "Bu alan boş bırakılamaz.";
-      if (value.length < 6) return "Şifre en az 6 karakter olmalıdır.";
+      if (value.length < 8) return "Şifre en az 8 karakter olmalıdır.";
+      if (value.length > 128) return "Şifre en fazla 128 karakter olabilir.";
+      if (!/[a-z]/.test(value) || !/[A-Z]/.test(value) || !/[0-9]/.test(value) || !/[^\w\s]/.test(value)) {
+        return "Şifre büyük/küçük harf, sayı ve özel karakter içermelidir.";
+      }
       return true;
     },
     passwordConfirm(value) {
@@ -72,6 +84,7 @@ const closePopup = () => {
 
 const username = useField("username");
 const email = useField("email");
+const phone = useField("phone");
 const password = useField("password");
 const passwordConfirm = useField("passwordConfirm");
 
@@ -81,13 +94,14 @@ const submitRegister = handleSubmit(async (values) => {
     const resp = await axios.post("/register", {
       username: values.username,
       email: values.email,
+      phone: values.phone,
       password: values.password,
     }, { withCredentials: true });
 
     loading.value = false;
 
     // Show success message
-    openPopup("Kayıt başarılı! Giriş sayfasına yönlendiriliyorsunuz...", "green-lighten-1");
+    openPopup("Kayıt alındı. Mail adresine gelen doğrulama bağlantısına tıkladıktan sonra giriş yapabilirsin.", "green-lighten-1");
 
     // Redirect to login page after 2 seconds
     setTimeout(() => {
@@ -125,6 +139,8 @@ const submitRegister = handleSubmit(async (values) => {
               prepend-inner-icon="mdi-account"
               clearable
               color="grey-lighten-1"
+              maxlength="50"
+              autocomplete="username"
             />
           </div>
 
@@ -139,6 +155,24 @@ const submitRegister = handleSubmit(async (values) => {
               prepend-inner-icon="mdi-email"
               clearable
               color="grey-lighten-1"
+              maxlength="255"
+              autocomplete="email"
+            />
+          </div>
+
+          <div class="form-field">
+            <v-text-field
+              v-model="phone.value.value"
+              :error-messages="phone.errorMessage.value"
+              label="Telefon"
+              type="tel"
+              variant="outlined"
+              density="comfortable"
+              prepend-inner-icon="mdi-phone"
+              clearable
+              color="grey-lighten-1"
+              maxlength="20"
+              autocomplete="tel"
             />
           </div>
 
@@ -155,6 +189,8 @@ const submitRegister = handleSubmit(async (values) => {
               @click:append-inner="togglePasswordVisibility"
               clearable
               color="grey-lighten-1"
+              maxlength="128"
+              autocomplete="new-password"
             />
           </div>
 
@@ -171,6 +207,8 @@ const submitRegister = handleSubmit(async (values) => {
               @click:append-inner="togglePasswordConfirmVisibility"
               clearable
               color="grey-lighten-1"
+              maxlength="128"
+              autocomplete="new-password"
             />
           </div>
 

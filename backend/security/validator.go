@@ -66,6 +66,24 @@ func (v *Validator) ValidateEmail(email string) error {
 	return nil
 }
 
+// ValidatePhone validates a conservative international phone number shape.
+// SMS doğrulaması ileride eklenecek; şimdilik alanı kısa ve sayısal tutarak
+// kayıt verisinin kalitesini ve input maliyetini sınırlarız.
+func (v *Validator) ValidatePhone(phone string) error {
+	phone = strings.TrimSpace(phone)
+	if phone == "" {
+		return &ValidationError{Field: "phone", Message: "is required"}
+	}
+	if len(phone) < 10 || len(phone) > 20 {
+		return &ValidationError{Field: "phone", Message: "must be between 10 and 20 characters"}
+	}
+	phoneRegex := regexp.MustCompile(`^\+?[0-9][0-9\s()-]{8,18}[0-9]$`)
+	if !phoneRegex.MatchString(phone) {
+		return &ValidationError{Field: "phone", Message: "is invalid"}
+	}
+	return nil
+}
+
 // ValidateUsername validates username format
 func (v *Validator) ValidateUsername(username string) error {
 	if username == "" {

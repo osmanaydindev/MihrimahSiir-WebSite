@@ -31,6 +31,8 @@ import HomepageManagement from '../pages/Management/HomepageManagement.vue';
 import MihrimahCardManagement from '../pages/Management/MihrimahCardManagement.vue';
 import BookRequestManagement from '../pages/Management/BookRequestManagement.vue';
 import BookRequest from '../pages/User/BookRequest.vue';
+import VerifyEmail from '../pages/User/VerifyEmail.vue';
+import ResetPassword from '../pages/User/ResetPassword.vue';
 import NotFound from '../pages/NotFound.vue';
 import axios from "axios";
 
@@ -44,6 +46,18 @@ const routes: Array<RouteRecordRaw> = [
     path: '/register',
     name: 'RegisterUser',
     component: RegisterUser,
+    meta: { requiresAuth: false },
+  },
+  {
+    path: '/verify-email',
+    name: 'VerifyEmail',
+    component: VerifyEmail,
+    meta: { requiresAuth: false },
+  },
+  {
+    path: '/reset-password',
+    name: 'ResetPassword',
+    component: ResetPassword,
     meta: { requiresAuth: false },
   },
   {

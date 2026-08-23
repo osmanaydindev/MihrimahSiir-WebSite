@@ -113,6 +113,10 @@ func renderJob(job Job) (string, error) {
 		return render(userApprovedTmpl, job.Data)
 	case TemplateUserRejected:
 		return render(userRejectedTmpl, job.Data)
+	case TemplateVerifyEmail:
+		return render(verifyEmailTmpl, job.Data)
+	case TemplatePasswordReset:
+		return render(passwordResetTmpl, job.Data)
 	default:
 		return render(adminNewRequestTmpl, job.Data)
 	}

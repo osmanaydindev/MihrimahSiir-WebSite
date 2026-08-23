@@ -13,6 +13,8 @@ const (
 	TemplateAdminNewRequest = "book_request_admin"
 	TemplateUserApproved    = "book_request_approved"
 	TemplateUserRejected    = "book_request_rejected"
+	TemplateVerifyEmail     = "verify_email"
+	TemplatePasswordReset   = "password_reset"
 )
 
 // BookRequestInfo, üç bildirimin de ihtiyaç duyduğu düz veri.
@@ -30,6 +32,42 @@ type BookRequestInfo struct {
 	AdminNote     string
 	BookSlug      string
 	MetadataFound bool
+}
+
+type AccountMailInfo struct {
+	Username string
+	Email    string
+	URL      string
+}
+
+func NotifyVerifyEmail(info AccountMailInfo) {
+	if !validRecipient(info.Email, TemplateVerifyEmail) {
+		return
+	}
+	Enqueue(Job{
+		To:       info.Email,
+		Subject:  "MihrimahSiir e-posta doğrulama",
+		Template: TemplateVerifyEmail,
+		Data: templateData{
+			Username:  info.Username,
+			ActionURL: info.URL,
+		},
+	})
+}
+
+func NotifyPasswordReset(info AccountMailInfo) {
+	if !validRecipient(info.Email, TemplatePasswordReset) {
+		return
+	}
+	Enqueue(Job{
+		To:       info.Email,
+		Subject:  "MihrimahSiir şifre sıfırlama",
+		Template: TemplatePasswordReset,
+		Data: templateData{
+			Username:  info.Username,
+			ActionURL: info.URL,
+		},
+	})
 }
 
 // NotifyAdminNewBookRequest, yeni talep bildirimini admin'e kuyruğa atar.

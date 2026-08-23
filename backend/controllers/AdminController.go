@@ -5,7 +5,12 @@ import (
 	"backend/helpers"
 	"backend/models"
 	"backend/security"
+	"backend/services/mail"
 	"backend/util"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
@@ -13,7 +18,14 @@ import (
 	"gorm.io/gorm"
 	"os"
 	"strconv"
+	"strings"
 	"time"
+)
+
+const (
+	emailTokenTTL         = 24 * time.Hour
+	passwordResetTokenTTL = 30 * time.Minute
+	maxAuthFieldBytes     = 512
 )
 
 func CreateAdmin(c *fiber.Ctx) error {
@@ -123,10 +135,11 @@ func CreateAdmin(c *fiber.Ctx) error {
 	}
 
 	admin := models.Admin{
-		Username: username,
-		Email:    email,
-		RoleID:   role,
-		Password: psw,
+		Username:      username,
+		Email:         email,
+		RoleID:        role,
+		Password:      psw,
+		EmailVerified: true,
 	}
 
 	if err := database.DB.Create(&admin).Error; err != nil {
@@ -150,7 +163,7 @@ func Register(c *fiber.Ctx) error {
 	sanitizer := security.NewSanitizer()
 
 	// Validate username
-	username := data["username"]
+	username := strings.TrimSpace(data["username"])
 	if err := validator.ValidateUsername(username); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"message": err.Error(),
@@ -159,13 +172,20 @@ func Register(c *fiber.Ctx) error {
 	username = sanitizer.SanitizeString(username, 50)
 
 	// Validate email
-	email := data["email"]
+	email := strings.ToLower(strings.TrimSpace(data["email"]))
 	if err := validator.ValidateEmail(email); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"message": err.Error(),
 		})
 	}
 	email = sanitizer.SanitizeString(email, 255)
+
+	phone := sanitizer.SanitizeString(data["phone"], 20)
+	if err := validator.ValidatePhone(phone); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": err.Error(),
+		})
+	}
 
 	// Validate password
 	password := data["password"]
@@ -201,12 +221,24 @@ func Register(c *fiber.Ctx) error {
 		})
 	}
 
-	// Create new user with role_id = 3
+	rawToken, tokenHash, expiresAt, err := newExpiringToken(emailTokenTTL)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Doğrulama bağlantısı oluşturulamadı",
+		})
+	}
+
+	// Public registration always creates a regular user. Role escalation from
+	// request bodies is intentionally impossible here.
 	admin := models.Admin{
-		Username: username,
-		Email:    email,
-		RoleID:   3, // Default role for registered users
-		Password: psw,
+		Username:                      username,
+		Email:                         email,
+		Phone:                         phone,
+		RoleID:                        3,
+		Password:                      psw,
+		EmailVerified:                 false,
+		EmailVerificationTokenHash:    tokenHash,
+		EmailVerificationTokenExpires: expiresAt,
 	}
 
 	if err := database.DB.Create(&admin).Error; err != nil {
@@ -215,12 +247,15 @@ func Register(c *fiber.Ctx) error {
 		})
 	}
 
+	sendVerificationMail(admin, rawToken)
+
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
-		"message": "User registered successfully",
+		"message": "Kayıt alındı. Giriş yapmadan önce e-posta adresini doğrulamalısın.",
 		"user": fiber.Map{
 			"id":       admin.ID,
 			"username": admin.Username,
 			"email":    admin.Email,
+			"phone":    admin.Phone,
 			"role_id":  admin.RoleID,
 		},
 	})
@@ -238,7 +273,7 @@ func Login(c *fiber.Ctx) error {
 	sanitizer := security.NewSanitizer()
 
 	// Validate username
-	username := data["username"]
+	username := strings.TrimSpace(data["username"])
 	if err := validator.ValidateString("username", username, 1, 50, true); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"message": err.Error(),
@@ -268,6 +303,22 @@ func Login(c *fiber.Ctx) error {
 	if err := bcrypt.CompareHashAndPassword(admin.Password, []byte(password)); err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"message": "Invalid username or password",
+		})
+	}
+
+	if !admin.EmailVerified {
+		rawToken, tokenHash, expiresAt, err := newExpiringToken(emailTokenTTL)
+		if err == nil {
+			database.DB.Model(&admin).Updates(map[string]interface{}{
+				"email_verification_token_hash":    tokenHash,
+				"email_verification_token_expires": expiresAt,
+			})
+			sendVerificationMail(admin, rawToken)
+		}
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"code":    "EMAIL_NOT_VERIFIED",
+			"message": "E-posta adresini doğrulaman gerekiyor. Doğrulama bağlantısı tekrar gönderildi.",
+			"email":   maskEmail(admin.Email),
 		})
 	}
 
@@ -513,7 +564,7 @@ func AuthCheck(c *fiber.Ctx) error {
 	}
 
 	var admin models.Admin
-	result := database.DB.Select("id, username, role_id, profile_image, is_private").Where("id", userID).First(&admin)
+	result := database.DB.Select("id, username, role_id, profile_image, is_private, email_verified").Where("id", userID).First(&admin)
 	if result.Error != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"message": "user not found",
@@ -523,13 +574,253 @@ func AuthCheck(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"message": "ok",
 		"user": fiber.Map{
-			"id":            admin.ID,
-			"username":      admin.Username,
-			"role_id":       admin.RoleID,
-			"profile_image": admin.ProfileImage,
-			"is_private":    admin.IsPrivate,
+			"id":             admin.ID,
+			"username":       admin.Username,
+			"role_id":        admin.RoleID,
+			"profile_image":  admin.ProfileImage,
+			"is_private":     admin.IsPrivate,
+			"email_verified": admin.EmailVerified,
 		},
 	})
+}
+
+func VerifyEmail(c *fiber.Ctx) error {
+	token := strings.TrimSpace(c.Query("token"))
+	if token == "" || len(token) > 256 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Doğrulama bağlantısı geçersiz."})
+	}
+
+	var admin models.Admin
+	now := time.Now()
+	if err := database.DB.Where(
+		"email_verification_token_hash = ? AND email_verification_token_expires > ?",
+		hashToken(token), now,
+	).First(&admin).Error; err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Doğrulama bağlantısı geçersiz veya süresi dolmuş."})
+	}
+
+	admin.EmailVerified = true
+	admin.EmailVerifiedAt = &now
+	admin.EmailVerificationTokenHash = ""
+	admin.EmailVerificationTokenExpires = nil
+	if err := database.DB.Save(&admin).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "E-posta doğrulanamadı."})
+	}
+	return c.JSON(fiber.Map{"message": "E-posta adresin doğrulandı. Artık giriş yapabilirsin."})
+}
+
+func ResendVerification(c *fiber.Ctx) error {
+	var data map[string]string
+	if err := c.BodyParser(&data); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid request body"})
+	}
+	admin, ok := authenticateForAccountAction(c, data)
+	if !ok {
+		return nil
+	}
+	if admin.EmailVerified {
+		return c.JSON(fiber.Map{"message": "E-posta adresin zaten doğrulanmış."})
+	}
+	rawToken, tokenHash, expiresAt, err := newExpiringToken(emailTokenTTL)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Doğrulama bağlantısı oluşturulamadı."})
+	}
+	database.DB.Model(&admin).Updates(map[string]interface{}{
+		"email_verification_token_hash":    tokenHash,
+		"email_verification_token_expires": expiresAt,
+	})
+	sendVerificationMail(admin, rawToken)
+	return c.JSON(fiber.Map{"message": "Doğrulama bağlantısı tekrar gönderildi."})
+}
+
+func UpdateEmailForVerification(c *fiber.Ctx) error {
+	var data map[string]string
+	if err := c.BodyParser(&data); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid request body"})
+	}
+	admin, ok := authenticateForAccountAction(c, data)
+	if !ok {
+		return nil
+	}
+
+	validator := security.NewValidator()
+	sanitizer := security.NewSanitizer()
+	newEmail := strings.ToLower(sanitizer.SanitizeString(data["email"], 255))
+	if err := validator.ValidateEmail(newEmail); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
+	}
+	phone := sanitizer.SanitizeString(data["phone"], 20)
+	if phone != "" {
+		if err := validator.ValidatePhone(phone); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
+		}
+	}
+
+	var existing models.Admin
+	database.DB.Where("email = ? AND id <> ?", newEmail, admin.ID).First(&existing)
+	if existing.ID != 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Bu e-posta adresi daha önce kullanılmış."})
+	}
+
+	rawToken, tokenHash, expiresAt, err := newExpiringToken(emailTokenTTL)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Doğrulama bağlantısı oluşturulamadı."})
+	}
+
+	updates := map[string]interface{}{
+		"email":                            newEmail,
+		"email_verified":                   false,
+		"email_verified_at":                nil,
+		"email_verification_token_hash":    tokenHash,
+		"email_verification_token_expires": expiresAt,
+	}
+	if phone != "" {
+		updates["phone"] = phone
+	}
+	if err := database.DB.Model(&admin).Updates(updates).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "E-posta güncellenemedi."})
+	}
+	admin.Email = newEmail
+	if phone != "" {
+		admin.Phone = phone
+	}
+	sendVerificationMail(admin, rawToken)
+	return c.JSON(fiber.Map{"message": "E-posta adresin güncellendi. Doğrulama bağlantısı gönderildi."})
+}
+
+func ForgotPassword(c *fiber.Ctx) error {
+	var data map[string]string
+	if err := c.BodyParser(&data); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid request body"})
+	}
+	identifier := strings.TrimSpace(data["identifier"])
+	if len(identifier) == 0 || len(identifier) > maxAuthFieldBytes {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Kullanıcı adı veya e-posta gerekli."})
+	}
+
+	var admin models.Admin
+	database.DB.Where("username = ? OR email = ?", identifier, strings.ToLower(identifier)).First(&admin)
+	if admin.ID != 0 && admin.Email != "" {
+		rawToken, tokenHash, expiresAt, err := newExpiringToken(passwordResetTokenTTL)
+		if err == nil {
+			database.DB.Model(&admin).Updates(map[string]interface{}{
+				"password_reset_token_hash":    tokenHash,
+				"password_reset_token_expires": expiresAt,
+			})
+			resetURL := publicFrontendURL("/reset-password?token=" + rawToken)
+			mail.NotifyPasswordReset(mail.AccountMailInfo{Username: admin.Username, Email: admin.Email, URL: resetURL})
+		}
+	}
+	// Enumeration önleme: kullanıcı yoksa da aynı cevap.
+	return c.JSON(fiber.Map{"message": "Bu bilgilerle eşleşen hesap varsa şifre sıfırlama bağlantısı gönderildi."})
+}
+
+func ResetPassword(c *fiber.Ctx) error {
+	var data map[string]string
+	if err := c.BodyParser(&data); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Invalid request body"})
+	}
+	token := strings.TrimSpace(data["token"])
+	password := data["password"]
+	if token == "" || len(token) > 256 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Şifre sıfırlama bağlantısı geçersiz."})
+	}
+	if err := security.NewValidator().ValidatePassword(password); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
+	}
+
+	var admin models.Admin
+	now := time.Now()
+	if err := database.DB.Where(
+		"password_reset_token_hash = ? AND password_reset_token_expires > ?",
+		hashToken(token), now,
+	).First(&admin).Error; err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "Şifre sıfırlama bağlantısı geçersiz veya süresi dolmuş."})
+	}
+
+	psw, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Şifre güncellenemedi."})
+	}
+	admin.Password = psw
+	admin.PasswordResetTokenHash = ""
+	admin.PasswordResetTokenExpires = nil
+	if !admin.EmailVerified {
+		admin.EmailVerified = true
+		admin.EmailVerifiedAt = &now
+	}
+	if err := database.DB.Save(&admin).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "Şifre güncellenemedi."})
+	}
+	return c.JSON(fiber.Map{"message": "Şifren güncellendi. Yeni şifrenle giriş yapabilirsin."})
+}
+
+func authenticateForAccountAction(c *fiber.Ctx, data map[string]string) (models.Admin, bool) {
+	validator := security.NewValidator()
+	sanitizer := security.NewSanitizer()
+
+	username := sanitizer.SanitizeString(strings.TrimSpace(data["username"]), 50)
+	password := data["password"]
+	if err := validator.ValidateString("username", username, 1, 50, true); err != nil {
+		_ = c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
+		return models.Admin{}, false
+	}
+	if err := validator.ValidateString("password", password, 1, 128, true); err != nil {
+		_ = c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": err.Error()})
+		return models.Admin{}, false
+	}
+
+	var admin models.Admin
+	database.DB.Where("username = ?", username).First(&admin)
+	if admin.ID == 0 || bcrypt.CompareHashAndPassword(admin.Password, []byte(password)) != nil {
+		_ = c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "Kullanıcı adı veya şifre hatalı."})
+		return models.Admin{}, false
+	}
+	return admin, true
+}
+
+func newExpiringToken(ttl time.Duration) (raw string, hash string, expiresAt *time.Time, err error) {
+	buf := make([]byte, 32)
+	if _, err = rand.Read(buf); err != nil {
+		return "", "", nil, err
+	}
+	raw = base64.RawURLEncoding.EncodeToString(buf)
+	hash = hashToken(raw)
+	expires := time.Now().Add(ttl)
+	return raw, hash, &expires, nil
+}
+
+func hashToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
+
+func sendVerificationMail(admin models.Admin, rawToken string) {
+	mail.NotifyVerifyEmail(mail.AccountMailInfo{
+		Username: admin.Username,
+		Email:    admin.Email,
+		URL:      publicFrontendURL("/verify-email?token=" + rawToken),
+	})
+}
+
+func publicFrontendURL(path string) string {
+	base := strings.TrimRight(os.Getenv("APP_PUBLIC_URL"), "/")
+	if base == "" {
+		base = "http://localhost:3000"
+	}
+	return base + path
+}
+
+func maskEmail(email string) string {
+	parts := strings.Split(email, "@")
+	if len(parts) != 2 {
+		return ""
+	}
+	name := []rune(parts[0])
+	if len(name) <= 2 {
+		return "***@" + parts[1]
+	}
+	return string(name[:1]) + "***" + string(name[len(name)-1:]) + "@" + parts[1]
 }
 func GetUserId(c *fiber.Ctx) uint {
 	// Get token from cookie

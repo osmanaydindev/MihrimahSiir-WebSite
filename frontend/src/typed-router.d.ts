@@ -48,6 +48,8 @@ declare module 'vue-router/auto-routes' {
     '/User/PopularPoems': RouteRecordInfo<'/User/PopularPoems', '/User/PopularPoems', Record<never, never>, Record<never, never>>,
     '/User/ReadsBooks': RouteRecordInfo<'/User/ReadsBooks', '/User/ReadsBooks', Record<never, never>, Record<never, never>>,
     '/User/Reminder': RouteRecordInfo<'/User/Reminder', '/User/Reminder', Record<never, never>, Record<never, never>>,
+    '/User/ResetPassword': RouteRecordInfo<'/User/ResetPassword', '/User/ResetPassword', Record<never, never>, Record<never, never>>,
     '/User/UserProfile': RouteRecordInfo<'/User/UserProfile', '/User/UserProfile', Record<never, never>, Record<never, never>>,
+    '/User/VerifyEmail': RouteRecordInfo<'/User/VerifyEmail', '/User/VerifyEmail', Record<never, never>, Record<never, never>>,
   }
 }

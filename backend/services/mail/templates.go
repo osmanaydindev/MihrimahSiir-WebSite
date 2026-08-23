@@ -64,6 +64,22 @@ var (
   `+bookDetailsBlock+`
   {{if .AdminNote}}<p style="margin:0 0 12px"><span style="color:#757575">Gerekçe:</span> {{.AdminNote}}</p>{{end}}
 {{end}}`)
+
+	verifyEmailTmpl = mustParse("verifyEmail", `
+{{define "content"}}
+  <p style="margin:0 0 12px">Merhaba {{.Username}},</p>
+  <p style="margin:0 0 12px">Hesabını kullanmaya devam etmek için e-posta adresini doğrulaman gerekiyor.</p>
+  {{if .ActionURL}}<p style="margin:16px 0"><a href="{{.ActionURL}}" style="display:inline-block;background:#1e1e1e;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:6px">E-postamı Doğrula</a></p>{{end}}
+  <p style="margin:0;color:#757575;font-size:12px">Bu bağlantı 24 saat geçerlidir. Bu isteği sen yapmadıysan bu maili yok sayabilirsin.</p>
+{{end}}`)
+
+	passwordResetTmpl = mustParse("passwordReset", `
+{{define "content"}}
+  <p style="margin:0 0 12px">Merhaba {{.Username}},</p>
+  <p style="margin:0 0 12px">Şifreni sıfırlamak için aşağıdaki bağlantıyı kullan.</p>
+  {{if .ActionURL}}<p style="margin:16px 0"><a href="{{.ActionURL}}" style="display:inline-block;background:#1e1e1e;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:6px">Şifremi Sıfırla</a></p>{{end}}
+  <p style="margin:0;color:#757575;font-size:12px">Bu bağlantı 30 dakika geçerlidir. Bu isteği sen yapmadıysan hesabın güvendedir.</p>
+{{end}}`)
 )
 
 func mustParse(name, content string) *template.Template {
@@ -85,6 +101,7 @@ type templateData struct {
 	AdminNote     string
 	PanelURL      string
 	BookURL       string
+	ActionURL     string
 	MetadataFound bool
 }
 
