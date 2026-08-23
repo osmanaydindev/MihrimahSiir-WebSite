@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAppStore } from '../../store/app'
 import axios from 'axios'
@@ -252,6 +252,13 @@ const handlePrivacyToggle = async (newValue: boolean) => {
 onMounted(() => {
   fetchUserProfile()
 })
+
+watch(
+  () => route.params.username,
+  () => {
+    fetchUserProfile()
+  }
+)
 </script>
 
 <template>

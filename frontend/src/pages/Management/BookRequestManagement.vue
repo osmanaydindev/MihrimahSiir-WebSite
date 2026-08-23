@@ -151,7 +151,7 @@ onMounted(async () => {
 <template>
   <v-card
     title="Kitap İstekleri"
-    class="mt-8 sm:w-100 md:w-75 mx-auto rounded-xl overflow-y-auto bg-grey-darken-2"
+    class="book-request-management mt-8 mx-auto bg-grey-darken-2"
   >
     <template v-slot:text>
       <v-select
@@ -162,7 +162,7 @@ onMounted(async () => {
         label="Durum"
         variant="solo"
         hide-details
-        class="w-100 md:w-[25%]"
+        class="status-filter"
         @update:model-value="fetchRequests(statusFilter)"
       />
     </template>
@@ -184,7 +184,7 @@ onMounted(async () => {
       <!-- Table.vue sütunları route'a göre hard-code ettiği ve kapak
            adreslerinin başına /uploads eklediği için burada kendi
            tablomuzu kullanıyoruz. -->
-      <v-table v-else class="bg-white rounded">
+      <v-table v-else class="request-review-table bg-white rounded">
         <thead>
           <tr>
             <th>Kapak</th>
@@ -398,3 +398,49 @@ onMounted(async () => {
     :color="snackbar.color"
   />
 </template>
+
+<style scoped>
+.book-request-management {
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.status-filter {
+  width: min(100%, 280px);
+}
+
+.request-review-table {
+  overflow-x: auto;
+}
+
+.request-review-table :deep(.v-table__wrapper) {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.request-review-table :deep(table) {
+  min-width: 860px;
+}
+
+.request-review-table :deep(th),
+.request-review-table :deep(td) {
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .book-request-management {
+    margin-top: 12px !important;
+  }
+
+  .request-review-table :deep(table) {
+    min-width: 760px;
+  }
+
+  .request-review-table :deep(th),
+  .request-review-table :deep(td) {
+    padding: 0 8px !important;
+    font-size: 0.82rem;
+  }
+}
+</style>

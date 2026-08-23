@@ -1,10 +1,12 @@
 <script lang="ts" setup>
 import axios from "axios";
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {useRouter} from "vue-router"
 import {useAppStore} from "../store/app";
+import { useDisplay } from "vuetify";
 const router = useRouter()
 const store = useAppStore()
+const { mobile } = useDisplay()
 
 // Bekleyen kitap isteği rozeti
 const pendingBookRequests = ref(0)
@@ -24,26 +26,58 @@ const logout = async()=>{
   store.$reset()
 }
 const drawer = ref(true)
-const rail = ref(true)
+const rail = ref(false)
+const navItems = [
+  { to: '/home', icon: 'mdi-home-switch-outline', title: 'Sayfaya Git', value: 'home' },
+  { to: '/log-management', icon: 'mdi-information', title: 'Giriş Yönet', value: 'logs' },
+  { to: '/admin-management', icon: 'mdi-account-group-outline', title: 'Admin Yönet', value: 'admins' },
+  { to: '/poem-management', icon: 'mdi-text-box-plus-outline', title: 'Şiir Yönet', value: 'poems' },
+  { to: '/book-management', icon: 'mdi-book', title: 'Kitap Yönet', value: 'books' },
+  { to: '/book-request-management', icon: 'mdi-book-plus-outline', title: 'Kitap İstekleri', value: 'book-requests' },
+  { to: '/author-management', icon: 'mdi-account-edit', title: 'Yazar Yönet', value: 'authors' },
+  { to: '/reminder-management', icon: 'mdi-bell', title: 'Hatırlatıcı Yönet', value: 'reminders' },
+  { to: '/homepage-management', icon: 'mdi-home-edit', title: 'Anasayfa Yönet', value: 'homepage' },
+  { to: '/mihrimah-card-management', icon: 'mdi-card-text', title: 'Mihrimah Kart Yönet', value: 'mihrimah-card' },
+]
+const drawerMode = computed(() => mobile.value ? 'temporary' : 'permanent')
+
+watch(mobile, (isMobile) => {
+  drawer.value = !isMobile
+  rail.value = false
+}, { immediate: true })
 </script>
 
 <template>
   <v-app>
-      <v-card class="h-100">
-        <v-layout class="h-100">
+      <v-card class="admin-shell">
+        <v-layout class="admin-layout">
+          <v-app-bar
+            v-if="mobile"
+            class="admin-app-bar"
+            elevation="0"
+            density="comfortable"
+          >
+            <template v-slot:prepend>
+              <v-app-bar-nav-icon @click.stop="drawer = !drawer" />
+            </template>
+            <v-app-bar-title>Admin Paneli</v-app-bar-title>
+          </v-app-bar>
+
           <v-navigation-drawer
             v-model="drawer"
-            :rail="rail"
-            permanent
-            @click="rail = false"
-            class="h-100"
+            :rail="!mobile && rail"
+            :temporary="drawerMode === 'temporary'"
+            :permanent="drawerMode === 'permanent'"
+            class="admin-drawer"
+            @click="!mobile && (rail = false)"
           >
             <v-list-item
-              prepend-icon="mdi-account-circle"
+              prepend-icon="mdi-view-dashboard-outline"
+              title="Admin Paneli"
               @click="router.push('/panel')"
               nav
             >
-              <template v-slot:append>
+              <template v-if="!mobile" v-slot:append>
                 <v-btn
                   style="text-transform: none;"
                   icon="mdi-chevron-left"
@@ -56,39 +90,23 @@ const rail = ref(true)
             <v-divider></v-divider>
 
             <v-list density="compact" nav>
-              <router-link to="/home" tag="v-list-item" class="text-white text-decoration-none">
-                <v-list-item prepend-icon="mdi-home-switch-outline" title="Sayfaya Git" value="home"></v-list-item>
-              </router-link>
-              <router-link to="/log-management" tag="v-list-item" class="text-white text-decoration-none">
-                <v-list-item prepend-icon="mdi-information" title="Giriş Yönet" value="latest-poems"></v-list-item>
-              </router-link>
-              <router-link to="/admin-management" tag="v-list-item" class="text-white text-decoration-none">
-                <v-list-item prepend-icon="mdi-account-group-outline" title="Admin Yönet" value="admins"></v-list-item>
-              </router-link>
-              <router-link to="/poem-management" tag="v-list-item" class="text-white text-decoration-none">
-                <v-list-item prepend-icon="mdi-text-box-plus-outline" title="Şiir Yönet" value="poems"></v-list-item>
-              </router-link>
-              <router-link to="/book-management" tag="v-list-item" class="text-white text-decoration-none">
-                <v-list-item prepend-icon="mdi-book" title="Kitap Yönet" value="books"></v-list-item>
-              </router-link>
-              <router-link to="/book-request-management" tag="v-list-item" class="text-white text-decoration-none">
-                <v-list-item prepend-icon="mdi-book-plus-outline" title="Kitap İstekleri" value="book-requests">
+              <router-link
+                v-for="item in navItems"
+                :key="item.value"
+                :to="item.to"
+                class="text-white text-decoration-none"
+                @click="mobile && (drawer = false)"
+              >
+                <v-list-item :prepend-icon="item.icon" :title="item.title" :value="item.value">
                   <template v-if="pendingBookRequests > 0" v-slot:append>
-                    <v-badge :content="pendingBookRequests" color="error" inline />
+                    <v-badge
+                      v-if="item.value === 'book-requests'"
+                      :content="pendingBookRequests"
+                      color="error"
+                      inline
+                    />
                   </template>
                 </v-list-item>
-              </router-link>
-              <router-link to="/author-management" tag="v-list-item" class="text-white text-decoration-none">
-                <v-list-item prepend-icon="mdi-account-edit" title="Yazar Yönet" value="authors"></v-list-item>
-              </router-link>
-              <router-link to="/reminder-management" tag="v-list-item" class="text-white text-decoration-none">
-                <v-list-item prepend-icon="mdi-bell" title="Hatırlatıcı Yönet" value="reminders"></v-list-item>
-              </router-link>
-              <router-link to="/homepage-management" tag="v-list-item" class="text-white text-decoration-none">
-                <v-list-item prepend-icon="mdi-home-edit" title="Anasayfa Yönet" value="homepage"></v-list-item>
-              </router-link>
-              <router-link to="/mihrimah-card-management" tag="v-list-item" class="text-white text-decoration-none">
-                <v-list-item prepend-icon="mdi-card-text" title="Mihrimah Kart Yönet" value="mihrimah-card"></v-list-item>
               </router-link>
               <v-list-item
                 prepend-icon="mdi-logout"
@@ -97,8 +115,8 @@ const rail = ref(true)
               />
             </v-list>
           </v-navigation-drawer>
-          <v-main class="h-100" style="height: 250px">
-            <div class="main d-flex w-75 justify-center my-12 mr-auto ml-auto">
+          <v-main class="admin-main">
+            <div class="admin-content">
               <router-view />
             </div>
           </v-main>
@@ -109,3 +127,49 @@ const rail = ref(true)
   </v-app>
 </template>
 
+<style scoped>
+.admin-shell,
+.admin-layout {
+  min-height: 100vh;
+  background: #121212;
+}
+
+.admin-app-bar,
+.admin-drawer {
+  background: linear-gradient(180deg, #1a1a1a 0%, #2d2d2d 100%) !important;
+  border-color: #424242 !important;
+}
+
+.admin-main {
+  min-height: 100vh;
+  background: #121212;
+}
+
+.admin-content {
+  width: min(100%, 1280px);
+  margin: 0 auto;
+  padding: 24px;
+}
+
+@media (max-width: 600px) {
+  .admin-content {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 960px) {
+  .admin-content :deep(.v-card) {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .admin-content :deep(.v-card-title) {
+    white-space: normal;
+    line-height: 1.25;
+  }
+
+  .admin-content :deep(.v-card-text) {
+    padding: 12px;
+  }
+}
+</style>

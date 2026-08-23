@@ -77,8 +77,9 @@ const stripHtml = (html) => {
       :headers="headers"
       :items="tableItems"
       :search="search"
-      class="elevation-1 bg-grey-darken-1"
-      style="border-radius: 0;"
+      class="admin-data-table elevation-1 bg-grey-darken-1"
+      density="comfortable"
+      fixed-header
   >
     <template v-slot:item="row" >
       <tr class="bg-white">
@@ -136,5 +137,39 @@ const stripHtml = (html) => {
 </template>
 
 <style scoped>
+.admin-data-table {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 0;
+}
 
+.admin-data-table :deep(.v-table__wrapper) {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-data-table :deep(table) {
+  min-width: 720px;
+}
+
+.admin-data-table :deep(th),
+.admin-data-table :deep(td) {
+  white-space: nowrap;
+}
+
+.admin-data-table :deep(td) {
+  color: #212121;
+}
+
+@media (max-width: 600px) {
+  .admin-data-table :deep(table) {
+    min-width: 640px;
+  }
+
+  .admin-data-table :deep(th),
+  .admin-data-table :deep(td) {
+    padding: 0 8px !important;
+    font-size: 0.82rem;
+  }
+}
 </style>

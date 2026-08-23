@@ -10,15 +10,17 @@ const props = defineProps({
 </script>
 
 <template>
-  <td class="d-flex justify-start align-center">
+  <td class="table-actions">
     <v-dialog width="500">
       <template v-slot:activator="{ props }">
         <v-btn
           style="color: #E57373;"
           v-bind="props"
           variant="text"
+          icon
+          size="small"
         >
-          <v-icon size="x-large" left>mdi-delete</v-icon>
+          <v-icon size="large">mdi-delete</v-icon>
           <v-tooltip activator="parent" location="top">Sil</v-tooltip>
         </v-btn>
       </template>
@@ -51,17 +53,25 @@ const props = defineProps({
       <v-tooltip activator="parent" location="top">Sil</v-tooltip>
     </button>-->
 
-    <button
+    <v-btn
         v-if="route.path!=='/log-management'"
-        style="color: #A5D6A7"
+        color="success"
+        variant="text"
+        icon
+        size="small"
         @click="openEditDialog(id)"
     >
-      <v-icon size="x-large" left>mdi-note-edit</v-icon>
+      <v-icon size="large">mdi-note-edit</v-icon>
       <v-tooltip activator="parent" location="top">Düzenle</v-tooltip>
-    </button>
+    </v-btn>
   </td>
 </template>
 
 <style scoped>
-
+.table-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 96px;
+}
 </style>
