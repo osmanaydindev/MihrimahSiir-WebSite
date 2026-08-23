@@ -64,7 +64,7 @@ onMounted(fetchMyRequests)
 </script>
 
 <template>
-  <v-container class="py-8" style="max-width: 900px">
+  <v-container class="book-request-page py-8">
     <PageHeader
       icon="mdi-book-plus-outline"
       title="Kitap İste"
@@ -74,7 +74,7 @@ onMounted(fetchMyRequests)
     />
 
     <!-- YENİ İSTEK -->
-    <v-card class="mb-8 pa-4" style="background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%); border: 2px solid #424242; border-radius: 16px">
+    <v-card class="request-form mb-8 pa-4">
       <v-text-field
         v-model="newIsbn"
         label="ISBN / EAN"
@@ -112,7 +112,7 @@ onMounted(fetchMyRequests)
     </v-card>
 
     <!-- İSTEKLERİM -->
-    <h2 class="text-h6 text-grey-lighten-1 mb-4">İsteklerim</h2>
+    <h2 class="section-title text-h6 text-grey-lighten-1 mb-4">İsteklerim</h2>
 
     <LoadingState v-if="loading" message="İstekler yükleniyor..." />
 
@@ -227,9 +227,38 @@ onMounted(fetchMyRequests)
 </template>
 
 <style scoped>
-.request-card {
+.book-request-page {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.request-form {
+  width: 100%;
   background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
   border: 2px solid #424242;
-  border-radius: 16px;
+  border-radius: 8px;
+}
+
+.section-title {
+  width: 100%;
+}
+
+.request-card {
+  width: 100%;
+  background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
+  border: 2px solid #424242;
+  border-radius: 8px;
+}
+
+@media (max-width: 600px) {
+  .book-request-page {
+    padding-right: 12px !important;
+    padding-left: 12px !important;
+  }
 }
 </style>
