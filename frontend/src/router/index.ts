@@ -29,6 +29,8 @@ import AuthorManagement from '../pages/Management/AuthorManagement.vue';
 import ReminderManagement from '../pages/Management/reminderManagement.vue';
 import HomepageManagement from '../pages/Management/HomepageManagement.vue';
 import MihrimahCardManagement from '../pages/Management/MihrimahCardManagement.vue';
+import BookRequestManagement from '../pages/Management/BookRequestManagement.vue';
+import BookRequest from '../pages/User/BookRequest.vue';
 import NotFound from '../pages/NotFound.vue';
 import axios from "axios";
 
@@ -102,6 +104,12 @@ const routes: Array<RouteRecordRaw> = [
         component: MihrimahCardManagement,
         meta: { requiresAuth: true },
       },
+      {
+        path: '/book-request-management',
+        name: 'BookRequestManagement',
+        component: BookRequestManagement,
+        meta: { requiresAuth: true },
+      },
     ]
   },
   {
@@ -156,6 +164,12 @@ const routes: Array<RouteRecordRaw> = [
         path: '/books',
         name: 'Book',
         component:Book,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: '/book-request',
+        name: 'BookRequest',
+        component:BookRequest,
         meta: { requiresAuth: true },
       },
       {
@@ -226,7 +240,7 @@ const router = createRouter({
 
 router.beforeEach(async (to, from, next) => {
   const store = useAppStore();
-  const forbiddenRoutes = ['Panel', 'AdminManagement', 'PoemManagement', 'HomepageManagement', 'MihrimahCardManagement'];
+  const forbiddenRoutes = ['Panel', 'AdminManagement', 'PoemManagement', 'HomepageManagement', 'MihrimahCardManagement', 'BookRequestManagement'];
   const adminMemberOnlyRoutes = ['']; // role_id 1 veya 2 olanlar girebilir
 
   if (to.path === '/') {

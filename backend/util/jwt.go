@@ -1,23 +1,45 @@
 package util
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"github.com/dgrijalva/jwt-go"
+	"errors"
+	"fmt"
+	"os"
 	"time"
+
+	"github.com/dgrijalva/jwt-go"
 )
 
-var pkey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-var pkey1 *ecdsa.PublicKey = &pkey.PublicKey
+// jwtSecret, JWT_SECRET ortam değişkeninden gelir. Anahtar process içinde
+// üretilmez; aksi halde her yeniden başlatmada tüm oturumlar düşer.
+var jwtSecret []byte
+
+const minSecretLength = 32
+
+// InitJWT, imzalama anahtarını ortam değişkeninden yükler.
+// Uygulama başlarken (env yüklendikten sonra) bir kez çağrılmalıdır.
+func InitJWT() error {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		return errors.New("JWT_SECRET tanımlı değil (öneri: openssl rand -hex 32)")
+	}
+	if len(secret) < minSecretLength {
+		return fmt.Errorf("JWT_SECRET en az %d karakter olmalı", minSecretLength)
+	}
+	jwtSecret = []byte(secret)
+	return nil
+}
 
 func SetToken(issuer string) (string, error) {
-	claims := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.StandardClaims{
+	if len(jwtSecret) == 0 {
+		return "", errors.New("jwt: imzalama anahtarı yüklenmedi")
+	}
+
+	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
 		Issuer:    issuer,
 		ExpiresAt: time.Now().Add(time.Hour * 24).Unix(), //1 gun gecerli
 	})
 
-	token, err := claims.SignedString(pkey)
+	token, err := claims.SignedString(jwtSecret)
 	return token, err
 }
 
@@ -26,15 +48,27 @@ type Claims struct {
 }
 
 func GetUserWithToken(cookie string) (string, error) {
+	if len(jwtSecret) == 0 {
+		return "", errors.New("jwt: imzalama anahtarı yüklenmedi")
+	}
+
 	token, err := jwt.ParseWithClaims(cookie, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-		return pkey1, nil
+		// Algoritma karıştırma saldırılarına karşı imza yöntemini doğrula
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("beklenmeyen imza yöntemi: %v", token.Header["alg"])
+		}
+		return jwtSecret, nil
 	})
-	if err != nil || !token.Valid {
+	if err != nil {
 		return "", err
 	}
-	if err != nil {
-		return "token olusmadı", err
+	if !token.Valid {
+		return "", errors.New("token gecersiz")
 	}
-	claims := token.Claims.(*Claims)
-	return claims.Issuer, err
+
+	claims, ok := token.Claims.(*Claims)
+	if !ok {
+		return "", errors.New("token claim'leri okunamadi")
+	}
+	return claims.Issuer, nil
 }

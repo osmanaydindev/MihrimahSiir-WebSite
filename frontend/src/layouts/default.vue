@@ -99,6 +99,12 @@ const items   = computed(() => {
           route: '/book-to-reads',
           icon: 'mdi-book-clock-outline',
         },
+        {
+          title: 'Kitap İste',
+          value: 'book-request',
+          route: '/book-request',
+          icon: 'mdi-book-plus-outline',
+        },
       ],
     },
     {

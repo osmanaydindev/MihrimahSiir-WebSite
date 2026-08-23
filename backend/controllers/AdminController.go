@@ -733,10 +733,11 @@ func GetUserProfile(c *fiber.Ctx) error {
 			Joins("JOIN poems ON admin_bookmark_poems.poem_id = poems.id").
 			Where("admin_bookmark_poems.admin_id = ? AND poems.community = ?", admin.ID, 2).
 			Count(&bookmarkCount)
-		database.DB.Table("user_books_read").
+		readBooksQuery := database.DB.Table("user_books_read").
 			Joins("JOIN books ON user_books_read.book_id = books.id").
-			Where("user_books_read.admin_id = ? AND books.community = ?", admin.ID, 2).
-			Count(&readBooksCount)
+			Where("user_books_read.admin_id = ?", admin.ID)
+		readBooksQuery = helpers.ApplyBookCommunityFilter(readBooksQuery, viewerRoleID, viewerID)
+		readBooksQuery.Count(&readBooksCount)
 	} else {
 		// Admin/Kullanıcı: count all items
 		database.DB.Table("admin_liked_poems").Where("admin_id = ?", admin.ID).Count(&likedCount)
@@ -940,7 +941,7 @@ func GetUserReadBooks(c *fiber.Ctx) error {
 	// role_id 0 (not logged in) or 3 (Misafir): only show community=2
 	// role_id 1,2 (Admin/Kullanıcı): show all
 	if viewerRoleID == 0 || viewerRoleID == 3 {
-		query = query.Where("books.community = ?", 2)
+		query = helpers.ApplyBookCommunityFilter(query, viewerRoleID, viewerID)
 	}
 
 	if err := query.Pluck("book_id", &bookIDs).Error; err != nil {

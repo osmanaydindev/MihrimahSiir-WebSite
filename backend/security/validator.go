@@ -191,6 +191,100 @@ func (v *Validator) ValidateCommunity(community int) error {
 	return nil
 }
 
+// ValidateBookCommunity validates a book's visibility level.
+// Kitaba özel: ValidateCommunity şiirler tarafından da kullanılıyor ve
+// şiir filtresi 3'ü tanımıyor, o yüzden ayrı tutuluyor.
+func (v *Validator) ValidateBookCommunity(community int) error {
+	if community != 1 && community != 2 && community != 3 {
+		return &ValidationError{Field: "community", Message: "must be 1 (private), 2 (public) or 3 (selected users)"}
+	}
+	return nil
+}
+
+// NormalizeISBN, girilen ISBN/EAN'ı temizler, doğrular ve ISBN-13'e çevirir.
+// Checksum doğrulaması dış API çağrısı açılmadan önceki en ucuz filtredir:
+// rastgele 13 hane burada büyük olasılıkla elenir.
+func (v *Validator) NormalizeISBN(raw string) (string, error) {
+	cleaned := strings.Map(func(r rune) rune {
+		if r == '-' || r == ' ' || r == '.' {
+			return -1
+		}
+		return unicode.ToUpper(r)
+	}, strings.TrimSpace(raw))
+
+	switch len(cleaned) {
+	case 10:
+		if !isValidISBN10(cleaned) {
+			return "", &ValidationError{Field: "isbn", Message: "invalid ISBN-10 checksum"}
+		}
+		return isbn10To13(cleaned), nil
+	case 13:
+		for _, r := range cleaned {
+			if r < '0' || r > '9' {
+				return "", &ValidationError{Field: "isbn", Message: "ISBN-13 must contain digits only"}
+			}
+		}
+		if !strings.HasPrefix(cleaned, "978") && !strings.HasPrefix(cleaned, "979") {
+			return "", &ValidationError{Field: "isbn", Message: "ISBN-13 must start with 978 or 979"}
+		}
+		if !isValidISBN13(cleaned) {
+			return "", &ValidationError{Field: "isbn", Message: "invalid ISBN-13 checksum"}
+		}
+		return cleaned, nil
+	default:
+		return "", &ValidationError{Field: "isbn", Message: "ISBN must be 10 or 13 characters"}
+	}
+}
+
+// isValidISBN10 — mod 11, son hane 'X' olabilir.
+func isValidISBN10(s string) bool {
+	sum := 0
+	for i := 0; i < 10; i++ {
+		c := s[i]
+		var digit int
+		switch {
+		case c >= '0' && c <= '9':
+			digit = int(c - '0')
+		case c == 'X' && i == 9:
+			digit = 10
+		default:
+			return false
+		}
+		sum += digit * (10 - i)
+	}
+	return sum%11 == 0
+}
+
+// isValidISBN13 — mod 10, ağırlıklar 1 ve 3 dönüşümlü.
+func isValidISBN13(s string) bool {
+	sum := 0
+	for i := 0; i < 13; i++ {
+		digit := int(s[i] - '0')
+		if i%2 == 0 {
+			sum += digit
+		} else {
+			sum += digit * 3
+		}
+	}
+	return sum%10 == 0
+}
+
+// isbn10To13, 978 öneki ekleyip kontrol hanesini yeniden hesaplar.
+func isbn10To13(isbn10 string) string {
+	core := "978" + isbn10[:9]
+	sum := 0
+	for i := 0; i < 12; i++ {
+		digit := int(core[i] - '0')
+		if i%2 == 0 {
+			sum += digit
+		} else {
+			sum += digit * 3
+		}
+	}
+	check := (10 - sum%10) % 10
+	return fmt.Sprintf("%s%d", core, check)
+}
+
 // ValidatePermission validates permission value
 func (v *Validator) ValidatePermission(permission int) error {
 	if permission < 1 || permission > 3 {

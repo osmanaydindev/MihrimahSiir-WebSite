@@ -4,50 +4,48 @@ import (
 	"backend/database"
 	"backend/helpers"
 	"backend/models"
+	"backend/security"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 	"strconv"
-	"strings"
 	"time"
 )
 
-// book's community: 1-private, 2-public
-func applyCommunityFilterForBook(db *gorm.DB, roleID uint) *gorm.DB {
-	if roleID == 1 || roleID == 2 {
-		return db
-	}
-	return db.Where("community = ?", 2)
+// book's community: 1-özel (rol 1,2), 2-herkese açık, 3-sadece seçili kullanıcılar
+func applyCommunityFilterForBook(db *gorm.DB, roleID uint, userID uint) *gorm.DB {
+	return helpers.ApplyBookCommunityFilter(db, roleID, userID)
 }
 
 func CreateBook(c *fiber.Ctx) error {
-	var book models.Book
-	if err := c.BodyParser(&book); err != nil {
-		return err
+	var payload bookWriteRequest
+	if err := c.BodyParser(&payload); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Geçersiz istek gövdesi",
+		})
 	}
-	book.IsDeleted = false
-	x := map[rune]rune{
-		' ':  '-',
-		'ç':  'c',
-		'ğ':  'g',
-		'ı':  'i',
-		'ö':  'o',
-		'ş':  's',
-		'ü':  'u',
-		'Ç':  'C',
-		'Ğ':  'G',
-		'İ':  'I',
-		'Ö':  'O',
-		'Ş':  'S',
-		'Ü':  'U',
-		'â':  'a',
-		'Â':  'A',
-		'\'': '-',
+
+	book := models.Book{IsDeleted: false}
+	if err := applyBookPayload(&book, payload, true); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": err.Error(),
+		})
 	}
-	slug := replaceChars(book.Name, x)
+
 	book.CreatedAt = time.Now().Format("02-01-2006")
-	book.Slug = strings.ToLower(slug)
-	database.DB.Create(&book)
+	book.Slug = helpers.UniqueBookSlug(book.Name, 0)
+
+	if err := database.DB.Create(&book).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Kitap oluşturulamadı",
+		})
+	}
+
+	if err := helpers.SetBookVisibility(database.DB, book.ID, book.Community, payload.VisibleUserIDs); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Kitap görünürlüğü kaydedilemedi",
+		})
+	}
 
 	userID := GetUserId(c)
 	roleID, err := helpers.GetUserRole(c)
@@ -80,7 +78,7 @@ func GetBooksPaginated(c *fiber.Ctx) error {
 
 	// Build base query
 	baseQuery := database.DB.Model(&models.Book{}).Where("is_deleted = ?", false)
-	baseQuery = applyCommunityFilterForBook(baseQuery, roleID)
+	baseQuery = applyCommunityFilterForBook(baseQuery, roleID, userID)
 
 	// Apply search filter if provided
 	if search != "" {
@@ -95,7 +93,7 @@ func GetBooksPaginated(c *fiber.Ctx) error {
 	// Get paginated books with community filtering
 	var books []models.Book
 	query := database.DB.Where("is_deleted = ?", false)
-	query = applyCommunityFilterForBook(query, roleID)
+	query = applyCommunityFilterForBook(query, roleID, userID)
 
 	// Apply search filter
 	if search != "" {
@@ -140,7 +138,7 @@ func GetBook(c *fiber.Ctx) error {
 
 	var book models.Book
 	query := database.DB.Where("slug = ?", slug)
-	query = applyCommunityFilterForBook(query, roleID)
+	query = applyCommunityFilterForBook(query, roleID, userID)
 	query.Preload("AuthorData").
 		Preload("Comments", "is_deleted = ?", false).
 		Preload("Comments.Admin").
@@ -172,7 +170,7 @@ func GetBook(c *fiber.Ctx) error {
 func getBooks(roleID uint, userID uint) []models.Book {
 	var books []models.Book
 	query := database.DB.Where("is_deleted = ?", false)
-	query = applyCommunityFilterForBook(query, roleID)
+	query = applyCommunityFilterForBook(query, roleID, userID)
 	query.Preload("AuthorData").
 		Preload("Comments", "is_deleted = ?", false).
 		Preload("Comments.Admin").
@@ -188,14 +186,15 @@ func getBooks(roleID uint, userID uint) []models.Book {
 
 func GetBookById(c *fiber.Ctx) error {
 	id, _ := strconv.Atoi(c.Params("id"))
+	userID := GetUserId(c)
 	roleID, err := helpers.GetUserRole(c)
 	if err != nil {
 		return err
 	}
 
 	var book models.Book
-	query := database.DB.Table("books").Where("id", id)
-	query = applyCommunityFilterForBook(query, roleID)
+	query := database.DB.Table("books").Where("books.id = ?", id)
+	query = applyCommunityFilterForBook(query, roleID, userID)
 	result := query.Preload("AuthorData").First(&book)
 
 	if result.Error != nil {
@@ -204,7 +203,22 @@ func GetBookById(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.JSON(book)
+	// Admin düzenleme ekranı seçili kullanıcı listesini de görebilmeli
+	return c.JSON(fiber.Map{
+		"id":               book.ID,
+		"name":             book.Name,
+		"author":           book.Author,
+		"author_id":        book.AuthorID,
+		"slug":             book.Slug,
+		"image":            book.Image,
+		"page":             book.Page,
+		"isbn":             book.ISBN,
+		"description":      book.Description,
+		"community":        book.Community,
+		"created_at":       book.CreatedAt,
+		"author_data":      book.AuthorData,
+		"visible_user_ids": helpers.GetBookVisibilityUserIDs(book.ID),
+	})
 }
 
 func UpdateBook(c *fiber.Ctx) error {
@@ -217,52 +231,24 @@ func UpdateBook(c *fiber.Ctx) error {
 		})
 	}
 
-	var updateData models.Book
-	if err := c.BodyParser(&updateData); err != nil {
+	var payload bookWriteRequest
+	if err := c.BodyParser(&payload); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request body",
 		})
 	}
 
-	// Update fields
-	if updateData.Name != "" {
-		book.Name = updateData.Name
-		// Regenerate slug if name changed
-		x := map[rune]rune{
-			' ':  '-',
-			'ç':  'c',
-			'ğ':  'g',
-			'ı':  'i',
-			'ö':  'o',
-			'ş':  's',
-			'ü':  'u',
-			'Ç':  'C',
-			'Ğ':  'G',
-			'İ':  'I',
-			'Ö':  'O',
-			'Ş':  'S',
-			'Ü':  'U',
-			'â':  'a',
-			'Â':  'A',
-			'\'': '-',
-		}
-		slug := replaceChars(book.Name, x)
-		book.Slug = strings.ToLower(slug)
+	previousName := book.Name
+	if err := applyBookPayload(&book, payload, false); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": err.Error(),
+		})
 	}
-	if updateData.Author != "" {
-		book.Author = updateData.Author
-	}
-	if updateData.AuthorID != nil {
-		book.AuthorID = updateData.AuthorID
-	}
-	if updateData.Image != "" {
-		book.Image = updateData.Image
-	}
-	if updateData.Page > 0 {
-		book.Page = updateData.Page
-	}
-	if updateData.Community > 0 {
-		book.Community = updateData.Community
+
+	// Slug'ı sadece isim gerçekten değiştiyse yenile; aksi halde mevcut
+	// bağlantılar (ve paylaşılmış URL'ler) boşuna kırılır.
+	if book.Name != previousName {
+		book.Slug = helpers.UniqueBookSlug(book.Name, book.ID)
 	}
 
 	if err := database.DB.Save(&book).Error; err != nil {
@@ -271,12 +257,96 @@ func UpdateBook(c *fiber.Ctx) error {
 		})
 	}
 
+	// Görünürlük listesi sadece istemci açıkça gönderdiyse ya da seviye
+	// 3'ten çıkıldıysa dokunulur; eski istemciler listeyi silmesin.
+	if payload.VisibleUserIDs != nil || book.Community != 3 {
+		if err := helpers.SetBookVisibility(database.DB, book.ID, book.Community, payload.VisibleUserIDs); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"message": "Kitap görünürlüğü kaydedilemedi",
+			})
+		}
+	}
+
 	userID := GetUserId(c)
 	roleID, err := helpers.GetUserRole(c)
 	if err != nil {
 		return err
 	}
 	return c.JSON(getBooks(roleID, userID))
+}
+
+// bookWriteRequest, admin kitap oluşturma/güncelleme gövdesi.
+// Doğrudan models.Book'a BodyParser yapmak mass assignment'a açıktı
+// (is_deleted, slug, id gibi alanlar dışarıdan set edilebiliyordu).
+type bookWriteRequest struct {
+	Name           string `json:"name"`
+	Author         string `json:"author"`
+	AuthorID       *uint  `json:"author_id"`
+	Image          string `json:"image"`
+	Description    string `json:"description"`
+	ISBN           string `json:"isbn"`
+	Page           int    `json:"page"`
+	Community      int    `json:"community"`
+	VisibleUserIDs []uint `json:"visible_user_ids"`
+}
+
+// applyBookPayload, gövdeyi doğrular/sanitize eder ve book üzerine uygular.
+// isCreate=false iken boş alanlar "değiştirme" anlamına gelir (mevcut
+// kısmi güncelleme davranışı korunuyor).
+func applyBookPayload(book *models.Book, payload bookWriteRequest, isCreate bool) error {
+	sanitizer := security.NewSanitizer()
+	validator := security.NewValidator()
+
+	name := sanitizer.SanitizeString(payload.Name, 500)
+	if isCreate || name != "" {
+		if err := validator.ValidateString("name", name, 1, 500, true); err != nil {
+			return err
+		}
+		if sanitizer.ContainsDangerousContent(name) {
+			return fmt.Errorf("kitap adı geçersiz karakterler içeriyor")
+		}
+		book.Name = name
+	}
+
+	if author := sanitizer.SanitizeString(payload.Author, 255); author != "" {
+		book.Author = author
+	}
+	if payload.AuthorID != nil {
+		book.AuthorID = payload.AuthorID
+	}
+	if image := sanitizer.SanitizeString(payload.Image, 1000); image != "" {
+		book.Image = image
+	}
+	if payload.Description != "" {
+		book.Description = sanitizer.StripTags(sanitizer.SanitizeString(payload.Description, 5000))
+	}
+	if payload.ISBN != "" {
+		normalized, err := validator.NormalizeISBN(payload.ISBN)
+		if err != nil {
+			return err
+		}
+		book.ISBN = normalized
+	}
+	if payload.Page > 0 {
+		if err := validator.ValidateInteger("page", payload.Page, 1, 100000); err != nil {
+			return err
+		}
+		book.Page = payload.Page
+	}
+	if payload.Community > 0 {
+		if err := validator.ValidateBookCommunity(payload.Community); err != nil {
+			return err
+		}
+		book.Community = payload.Community
+	} else if isCreate {
+		book.Community = 2
+	}
+
+	if book.Community == 3 && len(payload.VisibleUserIDs) == 0 {
+		return fmt.Errorf("görünürlük 'seçili kullanıcılar' iken en az bir kullanıcı seçilmeli")
+	}
+
+	return nil
 }
 
 func DeleteBook(c *fiber.Ctx) error {

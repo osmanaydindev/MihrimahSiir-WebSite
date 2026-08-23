@@ -22,10 +22,17 @@ FROM alpine:latest
 # Install ca-certificates for HTTPS requests
 RUN apk --no-cache add ca-certificates
 
-WORKDIR /root/
+# ÖNEMLİ: Uygulama dosyaları "./uploads" gibi göreli yollarla kaydeder.
+# Bu yüzden WORKDIR, docker-compose'un uploads volume'unu bağladığı
+# /app dizini ile aynı olmak zorunda. Aksi halde yüklenen profil resimleri
+# container silindiğinde kaybolur.
+WORKDIR /app
 
 # Copy the binary from builder stage
 COPY --from=builder /app/main .
+
+# Uploads dizini (volume mount edilmezse de var olsun)
+RUN mkdir -p /app/uploads/profiles
 
 # .env file will be provided by docker-compose environment variables
 

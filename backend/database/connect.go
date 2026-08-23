@@ -53,10 +53,16 @@ func ConnectDb() {
 		&models.Homepage{},
 		&models.MihrimahCard{},
 		&models.Friendship{},
+		&models.BookVisibility{},
+		&models.BookRequest{},
+		&models.MailLog{},
 	)
 	if err != nil {
 		panic("Could not migrate to the database")
 	} else {
 		println("Migrated to the database")
 	}
+
+	// GORM tag'leriyle ifade edilemeyen indeksler
+	EnsureIndexes()
 }

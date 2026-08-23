@@ -1,6 +1,8 @@
 package middlewares
 
 import (
+	"backend/helpers"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -11,6 +13,35 @@ import (
 type RateLimiterConfig struct {
 	Max        int
 	Expiration time.Duration
+}
+
+// UserRateLimiter, IP yerine kullanıcı id'sine göre sayar. Diğer
+// limiterlar sadece c.IP() kullanıyor; aynı NAT arkasındaki kullanıcılar
+// birbirinin kotasını tüketiyordu. Kimlik çözülemezse IP'ye düşer.
+//
+// Not: store bellekte tutuluyor, yani restart'ta sıfırlanır. Asıl
+// koruma controller'daki DB tabanlı sayımlarda.
+func UserRateLimiter(config RateLimiterConfig, message string) fiber.Handler {
+	return limiter.New(limiter.Config{
+		Max:        config.Max,
+		Expiration: config.Expiration,
+		// Sadece başarılı istekler sayılır. Asıl maliyet (dış API çağrısı +
+		// mail) yalnızca 2xx dönen isteklerde oluşuyor; hatalı ISBN yazan
+		// kullanıcının bir saat kilitlenmesi gereksiz. Ucuz hatalı istekler
+		// zaten global IP limitiyle (100/dk) sınırlı.
+		SkipFailedRequests: true,
+		KeyGenerator: func(c *fiber.Ctx) string {
+			if userID := helpers.GetUserIDFromCtx(c); userID > 0 {
+				return "u:" + strconv.Itoa(int(userID))
+			}
+			return "ip:" + c.IP()
+		},
+		LimitReached: func(c *fiber.Ctx) error {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{
+				"message": message,
+			})
+		},
+	})
 }
 
 // GlobalRateLimiter creates a global rate limiter

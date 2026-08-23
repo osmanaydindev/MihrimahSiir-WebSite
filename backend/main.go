@@ -4,13 +4,32 @@ import (
 	"backend/database"
 	"backend/middlewares"
 	"backend/routes"
+	"backend/services/mail"
+	"backend/util"
 	ws "backend/websocket"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/joho/godotenv"
 	"os"
 )
 
 func main() {
+	// .env dosyasını yükle (yoksa ortam değişkenleri kullanılır)
+	if err := godotenv.Load(); err != nil {
+		println("Error loading .env file")
+	}
+
+	// JWT imzalama anahtarını yükle. Anahtar sabit olmazsa her restart'ta
+	// tüm kullanıcı oturumları düşer; bu yüzden eksikse başlatma durur.
+	if err := util.InitJWT(); err != nil {
+		panic("JWT yapılandırması hatalı: " + err.Error())
+	}
+
+	// Upload klasörlerini hazırla (volume mount edilmiş olsa da boş olabilir)
+	if err := os.MkdirAll("./uploads/profiles", 0o755); err != nil {
+		panic("uploads klasörü oluşturulamadı: " + err.Error())
+	}
+
 	app := fiber.New(fiber.Config{
 		// Limit request body size to prevent DoS attacks
 		BodyLimit: 10 * 1024 * 1024, // 10MB
@@ -30,6 +49,9 @@ func main() {
 
 	// Start WebSocket hub
 	go ws.GlobalHub.Run()
+
+	// Mail kuyruğu (tek worker; Resend'in 2 istek/sn limitini aşmamak için)
+	mail.StartWorker()
 
 	// Apply security headers middleware (FIRST - before any other middleware)
 	app.Use(middlewares.SecurityHeaders())

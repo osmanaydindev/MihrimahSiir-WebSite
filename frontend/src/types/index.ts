@@ -39,12 +39,54 @@ export interface Book {
   id: number
   name: string
   author: string
+  author_id?: number | null
   slug: string
   image: string
   page: number
+  isbn?: string
+  description?: string
+  // 1 = özel (admin/üye), 2 = herkese açık, 3 = seçili kullanıcılar
+  community?: number
   is_deleted: boolean
   created_at: string
   comments?: Comment[]
+  author_data?: Author
+  visible_user_ids?: number[]
+}
+
+// Book Request Types
+export type BookRequestStatus = 'pending' | 'approved' | 'rejected'
+
+export interface BookRequest {
+  id: number
+  user_id: number
+  isbn: string
+  status: BookRequestStatus
+  fetched_title: string
+  fetched_authors: string
+  fetched_pages: number
+  fetched_cover_url: string
+  fetched_description: string
+  fetched_publisher: string
+  fetched_publish_date: string
+  open_library_key: string
+  metadata_found: boolean
+  user_note: string
+  admin_note: string
+  reviewed_by?: number | null
+  reviewed_at?: string | null
+  created_book_id?: number | null
+  created_at: string
+  updated_at: string
+  user?: User
+  created_book?: Book | null
+}
+
+export interface AdminBasicInfo {
+  id: number
+  username: string
+  email: string
+  role_id: number
 }
 
 // Comment Types

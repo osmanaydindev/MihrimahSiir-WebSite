@@ -12,7 +12,15 @@ const dialog = ref(false)
 const selectedBookId = ref(0)
 const books = reactive([])
 const authors = ref([])
+const users = ref([])
+const visibleUserIds = ref([])
 const { snackbar, error: showError, success } = useNotification()
+
+const communityOptions = [
+  { title: 'Özel (Sadece Admin ve Üyeler)', value: 1 },
+  { title: 'Herkese Açık', value: 2 },
+  { title: 'Sadece Seçili Kullanıcılar', value: 3 }
+]
 const headers = [
   { key: 'id', title: 'ID' },
   { key: 'name', title: 'Adı' },
@@ -62,6 +70,9 @@ const { handleSubmit, handleReset } = useForm({
     community(value) {
       if (!value) return "Bu alan boş kalamaz."
       return true
+    },
+    description(value) {
+      return true
     }
   }
 })
@@ -75,11 +86,13 @@ const image = useField('image')
 const slug = useField('slug')
 const is_deleted = useField('is_deleted')
 const community = useField('community')
+const description = useField('description')
 
 
 const openCreateDialog = async () => {
   edit.value = false
   await handleReset()
+  visibleUserIds.value = []
   dialog.value = true
   community.value.value = 2 // Default: Herkese Açık
 }
@@ -100,7 +113,9 @@ const openEditDialog = async (id) => {
         page.value.value = res.data.page
         image.value.value = res.data.image
         created_at.value.value = res.data.created_at
+        description.value.value = res.data.description || ''
         community.value.value = res.data.community || 2
+        visibleUserIds.value = res.data.visible_user_ids || []
       }).catch((error) => {
         showError(`Kitap getirme başarısız: ${error.response?.data?.message || error.message}`)
         console.error(error)
@@ -125,16 +140,30 @@ const deleteBook = async (id) => {
     console.log(e)
   }
 }
+const buildBookPayload = () => ({
+  name: name.value.value,
+  author: author.value.value || '',
+  author_id: author_id.value.value || null,
+  page: parseInt(page.value.value),
+  image: image.value.value,
+  description: description.value.value || '',
+  community: community.value.value || 2,
+  visible_user_ids: community.value.value === 3 ? visibleUserIds.value : []
+})
+
+// Görünürlük 3 iken boş liste kitabı erişilemez yapar; sunucu da reddeder.
+const visibilityGuardFailed = () => {
+  if (community.value.value === 3 && visibleUserIds.value.length === 0) {
+    showError('Görünürlük "Sadece Seçili Kullanıcılar" iken en az bir kullanıcı seçmelisiniz.')
+    return true
+  }
+  return false
+}
+
 const submitCreateBook = handleSubmit(async (values) => {
+  if (visibilityGuardFailed()) return
   try {
-    const data = {
-      name: name.value.value,
-      author: author.value.value || '',
-      author_id: author_id.value.value || null,
-      page: parseInt(page.value.value),
-      image: image.value.value,
-      community: community.value.value || 2
-    }
+    const data = buildBookPayload()
 
     await axios.post('/create-book', data)
       .then((res) => {
@@ -152,15 +181,9 @@ const submitCreateBook = handleSubmit(async (values) => {
   await handleReset()
 })
 const submitEditBook = handleSubmit(async (values) => {
+  if (visibilityGuardFailed()) return
   try {
-    const data = {
-      name: name.value.value,
-      author: author.value.value || '',
-      author_id: author_id.value.value || null,
-      page: parseInt(page.value.value),
-      image: image.value.value,
-      community: community.value.value || 2
-    }
+    const data = buildBookPayload()
 
     await axios.put(`/update-book/${selectedBookId.value}`, data)
       .then((res) => {
@@ -194,6 +217,14 @@ onMounted(async () => {
         authors.value = res.data
       }).catch((error) => {
         console.error('Failed to fetch authors:', error)
+      })
+
+    // Görünürlük 3 için kullanıcı listesi (admin-only endpoint)
+    await axios.get('/get-admins-management')
+      .then((res) => {
+        users.value = Array.isArray(res.data) ? res.data : []
+      }).catch((error) => {
+        console.error('Failed to fetch users:', error)
       })
   }catch (e) {
     console.log("hic girmedi")
@@ -319,17 +350,42 @@ onMounted(async () => {
                     </v-col>
 
                     <v-col cols="12">
+                      <v-textarea
+                        v-model="description.value.value"
+                        label="Özet (opsiyonel)"
+                        rows="3"
+                        auto-grow
+                        :error-messages="description.errorMessage.value"
+                      />
+                    </v-col>
+
+                    <v-col cols="12">
                       <v-select
                         v-model="community.value.value"
-                        :items="[
-                          { title: 'Özel (Sadece Admin ve Üyeler)', value: 1 },
-                          { title: 'Herkese Açık', value: 2 }
-                        ]"
+                        :items="communityOptions"
                         label="Görünürlük"
                         item-title="title"
                         item-value="value"
                         :error-messages="community.errorMessage.value"
                         variant="outlined"
+                      />
+                    </v-col>
+
+                    <v-col cols="12" v-if="community.value.value === 3">
+                      <v-autocomplete
+                        v-model="visibleUserIds"
+                        :items="users"
+                        item-title="username"
+                        item-value="id"
+                        label="Bu kitabı görebilecek kullanıcılar"
+                        multiple
+                        chips
+                        closable-chips
+                        clearable
+                        variant="outlined"
+                        no-data-text="Kullanıcı bulunamadı"
+                        hint="Admin ve üyeler bu kitabı zaten görebilir."
+                        persistent-hint
                       />
                     </v-col>
 

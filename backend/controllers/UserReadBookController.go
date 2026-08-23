@@ -189,7 +189,7 @@ func GetNotReadsBooksPaginated(c *fiber.Ctx) error {
 
 	// Build base query for books user hasn't read yet
 	baseQuery := database.DB.Model(&models.Book{}).Where("is_deleted = ?", false)
-	baseQuery = applyCommunityFilterForBook(baseQuery, roleID)
+	baseQuery = applyCommunityFilterForBook(baseQuery, roleID, userID)
 	if len(readBookIDs) > 0 {
 		baseQuery = baseQuery.Where("id NOT IN ?", readBookIDs)
 	}
@@ -207,7 +207,7 @@ func GetNotReadsBooksPaginated(c *fiber.Ctx) error {
 	// Get paginated unread books
 	books := []models.Book{}
 	query := database.DB.Where("is_deleted = ?", false)
-	query = applyCommunityFilterForBook(query, roleID)
+	query = applyCommunityFilterForBook(query, roleID, userID)
 	if len(readBookIDs) > 0 {
 		query = query.Where("id NOT IN ?", readBookIDs)
 	}

@@ -3,6 +3,7 @@ import {useRoute} from "vue-router";
 import {ref, onMounted, computed} from "vue";
 import DeleteAndUpdate from "@/components/shared/Table/DeleteAndUpdate.vue";
 import {useAppStore} from "@/store/app";
+import {getImageUrl} from "@/utils/imageHelper";
 
 const store = useAppStore()
 
@@ -43,8 +44,24 @@ const getRoleName = (role) => {
       return "Bilinmeyen Rol";
   }
 }
+// Kitap görünürlüğü rol adlarıyla aynı sayıları kullanıyor ama farklı
+// anlamlara geliyor; getRoleName burada "Misafir" yazdırıyordu.
+const getCommunityName = (community) => {
+  switch (community) {
+    case 1:
+      return "Özel";
+    case 2:
+      return "Herkese Açık";
+    case 3:
+      return "Seçili Kullanıcılar";
+    default:
+      return "Bilinmeyen";
+  }
+}
+// Kapak adresleri artık mutlak URL de olabiliyor (Open Library),
+// o yüzden /uploads öneki koşullu.
 const imagePath = (image) => {
-  return 'http://127.0.0.1:8080/uploads/'+image
+  return getImageUrl(image)
 }
 const stripHtml = (html) => {
   if (!html) return ''
@@ -88,7 +105,7 @@ const stripHtml = (html) => {
           ></v-img>
         </td>
         <td v-if="pageName==='/book-management'">{{row.item.page}}</td>
-        <td v-if="pageName==='/book-management'">{{getRoleName(row.item.community)}}</td>
+        <td v-if="pageName==='/book-management'">{{getCommunityName(row.item.community)}}</td>
 
         <td v-if="pageName==='/author-management'">{{row.item.name}}</td>
         <td v-if="pageName==='/author-management'">{{row.item.birth_year || '-'}}</td>

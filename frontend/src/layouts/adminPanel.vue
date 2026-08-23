@@ -1,10 +1,21 @@
 <script lang="ts" setup>
 import axios from "axios";
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import {useRouter} from "vue-router"
 import {useAppStore} from "../store/app";
 const router = useRouter()
 const store = useAppStore()
+
+// Bekleyen kitap isteği rozeti
+const pendingBookRequests = ref(0)
+onMounted(async () => {
+  try {
+    const res = await axios.get('/get-book-request-count')
+    pendingBookRequests.value = res.data?.pending || 0
+  } catch (e) {
+    pendingBookRequests.value = 0
+  }
+})
 const logout = async()=>{
   await axios.post("/logout")
   await router.push("/login")
@@ -59,6 +70,13 @@ const rail = ref(true)
               </router-link>
               <router-link to="/book-management" tag="v-list-item" class="text-white text-decoration-none">
                 <v-list-item prepend-icon="mdi-book" title="Kitap Yönet" value="books"></v-list-item>
+              </router-link>
+              <router-link to="/book-request-management" tag="v-list-item" class="text-white text-decoration-none">
+                <v-list-item prepend-icon="mdi-book-plus-outline" title="Kitap İstekleri" value="book-requests">
+                  <template v-if="pendingBookRequests > 0" v-slot:append>
+                    <v-badge :content="pendingBookRequests" color="error" inline />
+                  </template>
+                </v-list-item>
               </router-link>
               <router-link to="/author-management" tag="v-list-item" class="text-white text-decoration-none">
                 <v-list-item prepend-icon="mdi-account-edit" title="Yazar Yönet" value="authors"></v-list-item>

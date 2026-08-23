@@ -27,11 +27,23 @@ func (s *Sanitizer) SanitizeString(input string, maxLength int) string {
 	sanitized = strings.TrimSpace(sanitized)
 
 	// Limit length
-	if maxLength > 0 && len(sanitized) > maxLength {
-		sanitized = sanitized[:maxLength]
-	}
+	sanitized = truncateRunes(sanitized, maxLength)
 
 	return sanitized
+}
+
+// truncateRunes, karakter (rune) sınırında keser. Byte bazlı kesme
+// Türkçe karakteri ortadan bölüp Postgres'in "invalid byte sequence for
+// encoding UTF8" hatasıyla insert'i reddetmesine yol açıyordu.
+func truncateRunes(s string, maxLength int) string {
+	if maxLength <= 0 {
+		return s
+	}
+	runes := []rune(s)
+	if len(runes) <= maxLength {
+		return s
+	}
+	return strings.TrimSpace(string(runes[:maxLength]))
 }
 
 // SanitizeHTML escapes HTML special characters to prevent XSS

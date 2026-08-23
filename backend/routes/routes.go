@@ -34,6 +34,7 @@ func Setup(app *fiber.App) {
 	SetupMihrimahCardRoutes(app)
 	SetupFriendshipRoutes(app)
 	SetupAuthorRoutes(app)
+	SetupBookRequestRoutes(app)
 
 }
 
