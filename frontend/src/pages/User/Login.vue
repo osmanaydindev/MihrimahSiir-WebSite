@@ -26,6 +26,7 @@ const popup = ref(false);
 const popupTitle = ref("Giriş Başarısız");
 const popupMessage = ref("Lütfen kullanıcı adınızı ve şifrenizi kontrol ediniz.");
 const verifyDialog = ref(false);
+const verifyStep = ref<"choice" | "edit">("choice");
 const forgotDialog = ref(false);
 const accountUsername = ref("");
 const accountPassword = ref("");
@@ -33,6 +34,10 @@ const accountEmail = ref("");
 const accountPhone = ref("");
 const forgotIdentifier = ref("");
 const secondaryLoading = ref(false);
+const openVerifyDialog = () => {
+  verifyStep.value = "choice";
+  verifyDialog.value = true;
+};
 const togglePasswordVisibility = () => {
   showPassword.value = !showPassword.value;
 };
@@ -60,8 +65,7 @@ const submitLogin = handleSubmit(async (values) => {
     if (error.response?.data?.code === "EMAIL_NOT_VERIFIED") {
       accountUsername.value = values.username;
       accountPassword.value = values.password;
-      verifyDialog.value = true;
-      openPopup(error.response?.data?.message || "E-posta doğrulaması gerekiyor.", "E-posta Doğrulaması Gerekli");
+      openVerifyDialog();
     } else {
       openPopup(error.response?.data?.message || "Lütfen kullanıcı adınızı ve şifrenizi kontrol ediniz.");
     }
@@ -76,6 +80,7 @@ const resendVerification = async () => {
       username: accountUsername.value,
       password: accountPassword.value,
     });
+    verifyDialog.value = false;
     openPopup(res.data?.message || "Doğrulama bağlantısı gönderildi.", "İşlem Tamam");
   } catch (error: any) {
     openPopup(error.response?.data?.message || "Doğrulama bağlantısı gönderilemedi.");
@@ -93,6 +98,7 @@ const updateVerificationEmail = async () => {
       email: accountEmail.value,
       phone: accountPhone.value,
     });
+    verifyDialog.value = false;
     openPopup(res.data?.message || "E-posta güncellendi.", "İşlem Tamam");
   } catch (error: any) {
     openPopup(error.response?.data?.message || "E-posta güncellenemedi.");
@@ -166,7 +172,7 @@ const forgotPassword = async () => {
 
           <div class="login-links">
             <button type="button" @click="forgotDialog = true">Şifremi unuttum</button>
-            <button type="button" @click="verifyDialog = true">E-postamı doğrulayamıyorum</button>
+            <button type="button" @click="openVerifyDialog">E-postamı doğrulayamıyorum</button>
           </div>
 
           <v-btn
@@ -217,21 +223,99 @@ const forgotPassword = async () => {
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="verifyDialog" max-width="520">
-      <v-card class="error-dialog">
-        <v-card-title class="text-white">E-posta Doğrulama</v-card-title>
-        <v-card-text>
-          <v-text-field v-model="accountUsername" label="Kullanıcı Adı" maxlength="50" autocomplete="username" variant="outlined" />
-          <v-text-field v-model="accountPassword" label="Şifre" maxlength="128" autocomplete="current-password" type="password" variant="outlined" />
-          <v-btn block class="text-none mb-4" color="grey-darken-3" :loading="secondaryLoading" @click="resendVerification">
+    <v-dialog v-model="verifyDialog" max-width="480">
+      <v-card class="verify-dialog">
+        <v-card-text v-if="verifyStep === 'choice'" class="verify-content">
+          <v-icon size="52" color="grey-lighten-1" class="mb-4">mdi-email-check-outline</v-icon>
+          <h2 class="verify-title">E-posta doğrulaması gerekli</h2>
+          <p class="verify-copy">
+            Hesabını kullanmak için mail adresini doğrulamalısın. Mail kutunu ve spam klasörünü kontrol et.
+          </p>
+          <p class="verify-copy muted">
+            Mail adresin doğruysa bağlantıyı tekrar gönderelim. Yanlışsa yeni mail adresini girebilirsin.
+          </p>
+
+          <div v-if="!accountUsername || !accountPassword" class="verify-credentials">
+            <v-text-field
+              v-model="accountUsername"
+              label="Kullanıcı Adı"
+              maxlength="50"
+              autocomplete="username"
+              variant="outlined"
+              density="comfortable"
+            />
+            <v-text-field
+              v-model="accountPassword"
+              label="Şifre"
+              maxlength="128"
+              autocomplete="current-password"
+              type="password"
+              variant="outlined"
+              density="comfortable"
+            />
+          </div>
+
+          <v-btn block class="text-none mt-4" color="grey-darken-3" :loading="secondaryLoading" @click="resendVerification">
             Doğrulama Mailini Tekrar Gönder
           </v-btn>
-          <v-divider class="my-4" />
-          <p class="text-grey-lighten-1 text-body-2 mb-3">Mail adresin yanlışsa güncelle.</p>
-          <v-text-field v-model="accountEmail" label="Yeni E-posta" maxlength="255" autocomplete="email" type="email" variant="outlined" />
-          <v-text-field v-model="accountPhone" label="Telefon" maxlength="20" autocomplete="tel" type="tel" variant="outlined" />
-          <v-btn block class="text-none" color="grey-darken-3" :loading="secondaryLoading" @click="updateVerificationEmail">
-            E-postayı Güncelle ve Doğrulama Gönder
+          <v-btn block class="text-none mt-3" variant="outlined" color="grey-lighten-1" @click="verifyStep = 'edit'">
+            E-posta Adresim Yanlış
+          </v-btn>
+          <v-btn block class="text-none mt-2" variant="text" @click="verifyDialog = false">
+            Vazgeç
+          </v-btn>
+        </v-card-text>
+
+        <v-card-text v-else class="verify-content">
+          <v-icon size="52" color="grey-lighten-1" class="mb-4">mdi-email-edit-outline</v-icon>
+          <h2 class="verify-title">E-posta adresini güncelle</h2>
+          <p class="verify-copy">
+            Yeni e-posta adresini ve telefon numaranı gir. Doğrulama bağlantısı yeni adresine gönderilecek.
+          </p>
+
+          <div v-if="!accountUsername || !accountPassword" class="verify-credentials">
+            <v-text-field
+              v-model="accountUsername"
+              label="Kullanıcı Adı"
+              maxlength="50"
+              autocomplete="username"
+              variant="outlined"
+              density="comfortable"
+            />
+            <v-text-field
+              v-model="accountPassword"
+              label="Şifre"
+              maxlength="128"
+              autocomplete="current-password"
+              type="password"
+              variant="outlined"
+              density="comfortable"
+            />
+          </div>
+
+          <v-text-field
+            v-model="accountEmail"
+            label="Yeni E-posta"
+            maxlength="255"
+            autocomplete="email"
+            type="email"
+            variant="outlined"
+            density="comfortable"
+          />
+          <v-text-field
+            v-model="accountPhone"
+            label="Telefon"
+            maxlength="20"
+            autocomplete="tel"
+            type="tel"
+            variant="outlined"
+            density="comfortable"
+          />
+          <v-btn block class="text-none mt-2" color="grey-darken-3" :loading="secondaryLoading" @click="updateVerificationEmail">
+            Güncelle ve Doğrulama Gönder
+          </v-btn>
+          <v-btn block class="text-none mt-3" variant="text" @click="verifyStep = 'choice'">
+            Geri
           </v-btn>
         </v-card-text>
       </v-card>
@@ -413,6 +497,41 @@ const forgotPassword = async () => {
   font-size: clamp(14px, 2.5vw, 16px);
   color: #bdbdbd;
   padding: 0 clamp(20px, 4vw, 24px) clamp(16px, 3vw, 20px);
+}
+
+.verify-dialog {
+  background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%) !important;
+  border: 1px solid #555;
+  border-radius: 12px !important;
+}
+
+.verify-content {
+  padding: clamp(24px, 5vw, 36px) !important;
+  text-align: center;
+}
+
+.verify-title {
+  color: #ffffff;
+  font-size: clamp(24px, 5vw, 30px);
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0 0 14px;
+}
+
+.verify-copy {
+  color: #e0e0e0;
+  font-size: clamp(14px, 3vw, 16px);
+  line-height: 1.55;
+  margin: 0 0 12px;
+}
+
+.verify-copy.muted {
+  color: #bdbdbd;
+}
+
+.verify-credentials {
+  margin-top: 18px;
+  text-align: left;
 }
 
 /* Responsive adjustments */
