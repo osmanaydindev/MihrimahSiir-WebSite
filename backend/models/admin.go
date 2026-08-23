@@ -5,6 +5,7 @@ import "time"
 type Admin struct {
 	ID                            uint       `json:"id" autoIncrement:"true"`
 	Username                      string     `json:"username" gorm:"unique"`
+	FullName                      string     `json:"full_name"`
 	Email                         string     `json:"email" gorm:"unique"`
 	Phone                         string     `json:"phone"`
 	Password                      []byte     `json:"password" readOnly:"false"`

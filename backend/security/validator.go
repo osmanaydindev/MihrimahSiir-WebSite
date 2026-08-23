@@ -84,6 +84,24 @@ func (v *Validator) ValidatePhone(phone string) error {
 	return nil
 }
 
+func (v *Validator) ValidateFullName(name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return &ValidationError{Field: "full_name", Message: "is required"}
+	}
+	if len([]rune(name)) < 2 || len([]rune(name)) > 100 {
+		return &ValidationError{Field: "full_name", Message: "must be between 2 and 100 characters"}
+	}
+	nameRegex := regexp.MustCompile(`^[\p{L}\p{M}][\p{L}\p{M}\s'.-]*$`)
+	if !nameRegex.MatchString(name) {
+		return &ValidationError{Field: "full_name", Message: "contains invalid characters"}
+	}
+	if strings.Contains(name, "<") || strings.Contains(name, ">") {
+		return &ValidationError{Field: "full_name", Message: "contains invalid characters"}
+	}
+	return nil
+}
+
 // ValidateUsername validates username format
 func (v *Validator) ValidateUsername(username string) error {
 	if username == "" {

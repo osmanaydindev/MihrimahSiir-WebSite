@@ -31,6 +31,13 @@ const { handleSubmit, handleReset } = useForm({
       if (!emailRegex.test(value)) return "Geçerli bir e-posta adresi giriniz.";
       return true;
     },
+    fullName(value) {
+      if (!value) return "Bu alan boş bırakılamaz.";
+      if (value.length < 2) return "Ad soyad en az 2 karakter olmalıdır.";
+      if (value.length > 100) return "Ad soyad en fazla 100 karakter olabilir.";
+      if (!/^[\p{L}\p{M}][\p{L}\p{M}\s'.-]*$/u.test(value)) return "Ad soyad geçersiz karakter içeriyor.";
+      return true;
+    },
     phone(value) {
       if (!value) return "Bu alan boş bırakılamaz.";
       if (value.length < 10 || value.length > 20) return "Telefon 10-20 karakter arasında olmalıdır.";
@@ -84,6 +91,7 @@ const closePopup = () => {
 
 const username = useField("username");
 const email = useField("email");
+const fullName = useField("fullName");
 const phone = useField("phone");
 const password = useField("password");
 const passwordConfirm = useField("passwordConfirm");
@@ -93,6 +101,7 @@ const submitRegister = handleSubmit(async (values) => {
     loading.value = true;
     const resp = await axios.post("/register", {
       username: values.username,
+      full_name: values.fullName,
       email: values.email,
       phone: values.phone,
       password: values.password,
@@ -157,6 +166,21 @@ const submitRegister = handleSubmit(async (values) => {
               color="grey-lighten-1"
               maxlength="255"
               autocomplete="email"
+            />
+          </div>
+
+          <div class="form-field">
+            <v-text-field
+              v-model="fullName.value.value"
+              :error-messages="fullName.errorMessage.value"
+              label="Ad Soyad"
+              variant="outlined"
+              density="comfortable"
+              prepend-inner-icon="mdi-card-account-details-outline"
+              clearable
+              color="grey-lighten-1"
+              maxlength="100"
+              autocomplete="name"
             />
           </div>
 

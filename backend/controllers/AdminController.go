@@ -180,6 +180,13 @@ func Register(c *fiber.Ctx) error {
 	}
 	email = sanitizer.SanitizeString(email, 255)
 
+	fullName := sanitizer.SanitizeString(data["full_name"], 100)
+	if err := validator.ValidateFullName(fullName); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": err.Error(),
+		})
+	}
+
 	phone := sanitizer.SanitizeString(data["phone"], 20)
 	if err := validator.ValidatePhone(phone); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -232,6 +239,7 @@ func Register(c *fiber.Ctx) error {
 	// request bodies is intentionally impossible here.
 	admin := models.Admin{
 		Username:                      username,
+		FullName:                      fullName,
 		Email:                         email,
 		Phone:                         phone,
 		RoleID:                        3,
@@ -252,11 +260,12 @@ func Register(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"message": "Kayıt alındı. Giriş yapmadan önce e-posta adresini doğrulamalısın.",
 		"user": fiber.Map{
-			"id":       admin.ID,
-			"username": admin.Username,
-			"email":    admin.Email,
-			"phone":    admin.Phone,
-			"role_id":  admin.RoleID,
+			"id":        admin.ID,
+			"username":  admin.Username,
+			"full_name": admin.FullName,
+			"email":     admin.Email,
+			"phone":     admin.Phone,
+			"role_id":   admin.RoleID,
 		},
 	})
 }
