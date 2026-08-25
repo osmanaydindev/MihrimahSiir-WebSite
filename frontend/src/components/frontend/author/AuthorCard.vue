@@ -187,17 +187,18 @@ const authorImage = computed(() => {
 
 /* Responsive */
 @media (max-width: 600px) {
+  /* Telefonda satır başına 2 kart var, sütun ~165px. */
   .author-portrait {
-    height: 280px !important;
+    height: 190px !important;
   }
 
   .author-name {
-    font-size: 18px;
+    font-size: 14px;
   }
 
   .author-years,
   .author-nationality {
-    font-size: 13px;
+    font-size: 11px;
   }
 
   .stat-item {

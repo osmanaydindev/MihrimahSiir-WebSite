@@ -32,7 +32,6 @@ const updateValue = () => {
 };
 const interval = setInterval(updateValue, 10);
 
-
 const getAllPoems = async () => {
   isSearch.value = false
   poems.value = []
@@ -176,8 +175,8 @@ onUnmounted(() => {
     <!-- Poems Grid -->
     <div class="poems-grid">
       <div v-if="!loading && poems.length > 0">
-        <div class="poems-grid-container">
-          <div v-for="poem in poems" :key="poem.id" class="poem-grid-item">
+        <div class="ao-grid ao-grid--poems">
+          <div v-for="poem in poems" :key="poem.id" class="ao-grid-item">
             <PoemCard :poem="poem" />
           </div>
         </div>
@@ -310,63 +309,22 @@ onUnmounted(() => {
   width: 100%;
 }
 
-.poems-grid-container {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 24px;
-  margin-bottom: 32px;
-}
-
-.poem-grid-item {
-  width: 100%;
-  max-width: 380px;
-}
-
 /* Pagination */
 .pagination-control {
   margin-top: 48px;
 }
 
-
 /* Responsive Grid */
-@media (min-width: 600px) {
-  .poem-grid-item {
-    width: calc(50% - 12px);
-  }
-}
-
-@media (min-width: 960px) {
-  .poem-grid-item {
-    width: calc(33.333% - 16px);
-  }
-}
-
-@media (min-width: 1280px) {
-  .poem-grid-item {
-    width: calc(33.333% - 16px);
-  }
-}
-
-@media (min-width: 1920px) {
-  .poem-grid-item {
-    width: calc(25% - 18px);
-  }
-}
-
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .poems-container {
-    padding: 24px 12px;
+    padding: 16px 4px;
   }
 
   .search-section {
     margin-bottom: 24px;
   }
 
-  .poems-grid-container {
-    gap: 16px;
-  }
 }
 
 /* Mihrimah Dialog Styles */

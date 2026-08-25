@@ -172,8 +172,8 @@ onMounted(() => {
         <div class="tab-content">
           <!-- Poems Tab -->
           <div v-show="activeTab === 'poems'">
-            <div v-if="author.poems && author.poems.length > 0" class="poems-grid">
-              <div v-for="poem in author.poems" :key="poem.id" class="poem-grid-item">
+            <div v-if="author.poems && author.poems.length > 0" class="ao-grid ao-grid--poems">
+              <div v-for="poem in author.poems" :key="poem.id" class="ao-grid-item">
                 <PoemCard :poem="poem" />
               </div>
             </div>
@@ -188,8 +188,8 @@ onMounted(() => {
 
           <!-- Books Tab -->
           <div v-show="activeTab === 'books'">
-            <div v-if="author.books && author.books.length > 0" class="books-grid">
-              <div v-for="book in author.books" :key="book.id" class="book-grid-item">
+            <div v-if="author.books && author.books.length > 0" class="ao-grid ao-grid--books">
+              <div v-for="book in author.books" :key="book.id" class="ao-grid-item">
                 <BookCard :book="book" />
               </div>
             </div>
@@ -417,13 +417,6 @@ onMounted(() => {
   min-height: clamp(300px, 60vw, 400px);
 }
 
-.poems-grid,
-.books-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(clamp(240px, 45vw, 280px), 1fr));
-  gap: clamp(16px, 3vw, 24px);
-}
-
 /* Mobile-specific adjustments */
 @media (max-width: 768px) {
   .header-content {
@@ -434,10 +427,5 @@ onMounted(() => {
 }
 
 /* Very small screens - force single column for grids */
-@media (max-width: 480px) {
-  .poems-grid,
-  .books-grid {
-    grid-template-columns: 1fr;
-  }
-}
+@media (max-width: 480px) {}
 </style>

@@ -297,26 +297,33 @@ const formatDate = (dateString: string) => {
 /* Responsive Design */
 @media (max-width: 768px) {
   .reminder-page {
-    padding: 24px 12px;
+    padding: 16px 8px;
   }
 
   .quote-card {
-    padding: 24px;
+    padding: 18px;
+    margin-bottom: 10px;
   }
 
   .quote-content {
-    font-size: 16px;
-    line-height: 1.7;
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+
+  /* Dekoratif tırnak ikonu telefonda yer harcıyor */
+  .quote-icon-wrapper {
+    display: none;
   }
 }
 
 @media (max-width: 480px) {
   .quote-card {
-    padding: 20px;
+    padding: 16px;
   }
 
   .quote-content {
-    font-size: 15px;
+    font-size: 14px;
   }
 }
 </style>

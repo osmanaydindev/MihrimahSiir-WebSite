@@ -359,7 +359,9 @@ watch(group, () => {
         </v-btn>
       </template>
     </v-app-bar>
-    <router-view class="d-flex w-full px-6 py-8 mr-auto ml-auto content-area"/>
+    <!-- Yatay dolgu telefonda 24px -> 12px. Sayfalar kendi dolgularını da
+         ekliyor; ikisi birlikte 375px ekranın ~%19'unu yiyordu. -->
+    <router-view class="d-flex w-full px-3 px-sm-6 py-4 py-sm-8 mr-auto ml-auto content-area"/>
   </v-main>
   <!-- Footer Component -->
   <Footer />

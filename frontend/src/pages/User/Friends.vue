@@ -402,7 +402,7 @@ const removeFriend = async (friendshipId: number) => {
 
 @media (max-width: 768px) {
   .friends-container {
-    padding: 24px 12px;
+    padding: 16px 4px;
   }
 
   .page-title {

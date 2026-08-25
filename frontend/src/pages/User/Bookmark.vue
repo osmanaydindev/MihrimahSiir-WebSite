@@ -113,8 +113,8 @@ const handlePoemUnbookmarked = (poem: PoemType) => {
       />
 
       <!-- Poems Grid -->
-      <div class="poems-grid d-flex flex-column align-center flex-sm-row flex-sm-wrap justify-sm-center ga-4 mb-12 w-100">
-        <div v-for="poem in bookmarkedPoems" :key="poem.id" class="poem-grid-item">
+      <div class="ao-grid ao-grid--poems mb-12">
+        <div v-for="poem in bookmarkedPoems" :key="poem.id" class="ao-grid-item">
           <PoemCard :poem="poem" @poem-unbookmarked="handlePoemUnbookmarked" />
         </div>
       </div>
@@ -184,12 +184,6 @@ const handlePoemUnbookmarked = (poem: PoemType) => {
   margin: 0 auto;
 }
 
-.poem-grid-item {
-  width: 100%;
-  max-width: 380px;
-  animation: fadeInUp 0.6s ease-out both;
-}
-
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -202,42 +196,10 @@ const handlePoemUnbookmarked = (poem: PoemType) => {
 }
 
 /* Responsive Grid */
-@media (min-width: 600px) {
-  .poem-grid-item {
-    width: calc(50% - 12px);
-    min-width: 340px;
-    max-width: 380px;
-  }
-}
-
-@media (min-width: 960px) {
-  .poem-grid-item {
-    width: calc(33.333% - 16px);
-    min-width: 340px;
-    max-width: 380px;
-  }
-}
-
-@media (min-width: 1280px) {
-  .poem-grid-item {
-    width: calc(33.333% - 16px);
-    min-width: 360px;
-    max-width: 380px;
-  }
-}
-
-@media (min-width: 1920px) {
-  .poem-grid-item {
-    width: calc(25% - 16px);
-    min-width: 360px;
-    max-width: 380px;
-  }
-}
-
 /* Responsive Design */
 @media (max-width: 768px) {
   .bookmark-container {
-    padding: 24px 12px;
+    padding: 16px 4px;
   }
 }
 </style>

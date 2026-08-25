@@ -1,0 +1,51 @@
+/*
+ * Liste ızgaraları — tek kaynak.
+ *
+ * Bu kurallar daha önce her sayfada birebir kopyalanmıştı: şiir ızgarası
+ * 5 dosyada (Poems, LatestPoems, PopularPoems, LikedPoems, Bookmark), kitap
+ * ızgarası 3 dosyada (BookList, ReadsBooks, NotReadsBooks). Yoğunluğu
+ * değiştirmek 8 dosyaya dokunmayı gerektiriyordu; artık burası yetiyor.
+ *
+ * Vuetify breakpoint'leri: xs <600, sm 600-959, md 960-1279, lg 1280-1919, xl 1920+
+ */
+
+/* ─── Ortak kapsayıcı ────────────────────────────────────────────────────── */
+.ao-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  margin-bottom: 32px;
+}
+
+@media (min-width: 600px) {
+  .ao-grid { gap: 24px; }
+}
+
+/* ─── Şiir kartı — telefonda tek sütun ──────────────────────────────────────
+ * İki sütuna bölünmüyor: kartta şiir metni önizlemesi var ve 375px ekranda
+ * sütun başına ~145px kalır, metin okunmaz hale gelir. Yoğunluk bunun yerine
+ * kartı kısaltarak kazanılıyor (bkz. PoemCard.vue .poem-preview).
+ */
+.ao-grid--poems > .ao-grid-item {
+  width: 100%;
+  max-width: 380px;
+}
+
+@media (min-width: 600px)  { .ao-grid--poems > .ao-grid-item { width: calc(50% - 12px); } }
+@media (min-width: 960px)  { .ao-grid--poems > .ao-grid-item { width: calc(33.333% - 16px); } }
+@media (min-width: 1920px) { .ao-grid--poems > .ao-grid-item { width: calc(25% - 18px); } }
+
+/* ─── Kitap kartı — telefonda iki sütun ─────────────────────────────────────
+ * Kapak görseli küçükken de okunur, bu yüzden şiirden farklı olarak xs'te de
+ * 2 sütun. `max-width` yok: 2 sütun matematiğini bozardı.
+ */
+.ao-grid--books > .ao-grid-item {
+  width: calc(50% - 6px);
+  min-width: 0; /* eski inline min-width:300px 320px ekranda taşma üretiyordu */
+}
+
+@media (min-width: 600px)  { .ao-grid--books > .ao-grid-item { width: calc(33.333% - 16px); max-width: 320px; } }
+@media (min-width: 960px)  { .ao-grid--books > .ao-grid-item { width: calc(25% - 18px); } }
+@media (min-width: 1920px) { .ao-grid--books > .ao-grid-item { width: calc(20% - 20px); } }

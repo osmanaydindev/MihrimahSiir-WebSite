@@ -126,7 +126,8 @@ const handleButtonClick = () => {
 @media (max-width: 599px) {
   .empty-state-container {
     padding: 24px 16px;
-    min-height: calc(100vh - 200px);
+    /* Tek bir boş durum kartı tüm telefon ekranını yiyordu. */
+    min-height: 40vh;
   }
 
   .empty-state-card {

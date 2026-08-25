@@ -132,12 +132,11 @@ const handleBookAddedToReads = (book: any) => {
       />
 
       <!-- Books Grid -->
-      <div class="books-grid d-flex flex-column align-center flex-sm-row flex-sm-wrap justify-sm-center ga-4 mb-12 w-100">
+      <div class="ao-grid ao-grid--books mb-12">
         <div
           v-for="book in notReadsBooks"
           :key="book.id"
-          class="book-grid-item"
-          style="min-width: 300px;"
+          class="ao-grid-item"
         >
           <BookCard
             :book="book"
@@ -210,7 +209,7 @@ const handleBookAddedToReads = (book: any) => {
 
 @media (max-width: 768px) {
   .page-container {
-    padding: 24px 12px;
+    padding: 16px 4px;
   }
 }
 </style>

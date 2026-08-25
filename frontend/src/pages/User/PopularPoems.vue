@@ -67,8 +67,8 @@ onMounted(async () => {
       message="Şiirleri beğenerek popüler şiirlerin oluşmasına katkıda bulunabilirsin!"
     />
 
-    <div v-else class="poems-grid-container">
-      <div v-for="poem in poems" :key="poem.id" class="poem-grid-item">
+    <div v-else class="ao-grid ao-grid--poems">
+      <div v-for="poem in poems" :key="poem.id" class="ao-grid-item">
         <PoemCard :poem="poem" />
       </div>
     </div>
@@ -93,34 +93,4 @@ onMounted(async () => {
   padding: 40px 20px;
 }
 
-.poems-grid-container {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 24px;
-  margin-top: 32px;
-}
-
-.poem-grid-item {
-  width: 100%;
-  max-width: 380px;
-}
-
-@media (min-width: 600px) {
-  .poem-grid-item {
-    width: calc(50% - 12px);
-  }
-}
-
-@media (min-width: 960px) {
-  .poem-grid-item {
-    width: calc(33.333% - 16px);
-  }
-}
-
-@media (min-width: 1920px) {
-  .poem-grid-item {
-    width: calc(25% - 18px);
-  }
-}
 </style>

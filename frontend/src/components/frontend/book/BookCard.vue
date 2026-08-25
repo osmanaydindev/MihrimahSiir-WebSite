@@ -56,11 +56,13 @@ var isRead = computed(() => {
         </div>
 
         <!-- Book Cover -->
+        <!-- Yükseklik CSS'ten geliyor: telefonda 2 sütuna geçtiğimiz için
+             sabit 280px kapak orantısız kalıyordu (bkz. .book-cover-wrapper). -->
         <div class="book-cover-wrapper">
           <v-img
             :src="book.image"
             class="book-cover"
-            height="280px"
+            height="100%"
             cover
           >
             <div class="cover-overlay"></div>
@@ -68,7 +70,7 @@ var isRead = computed(() => {
         </div>
 
         <!-- Book Info -->
-        <div class="book-info pa-4">
+        <div class="book-info pa-3 pa-sm-4">
           <h3 class="book-title text-white mb-2">{{ book.name }}</h3>
           <p class="book-author text-grey-lighten-1 mb-1">{{ book.author }}</p>
           <div class="book-meta text-grey-darken-1">
@@ -79,7 +81,9 @@ var isRead = computed(() => {
       </router-link>
 
       <!-- Action Button -->
-      <v-card-actions class="pa-4 pt-0">
+      <!-- Etiket telefonda kısalıyor: 2 sütunda sütun ~165px ve
+           "Okunanlara Ekle" sığmıyordu (bkz. .action-btn @600px). -->
+      <v-card-actions class="pa-3 pa-sm-4 pt-0">
         <v-btn
           v-if="!isRead"
           block
@@ -88,8 +92,9 @@ var isRead = computed(() => {
           class="action-btn add-btn"
           @click.stop="handleAddBook()"
         >
-          <v-icon left size="18" class="mr-2">mdi-plus-circle-outline</v-icon>
-          Okunanlara Ekle
+          <v-icon left size="18" class="mr-2 btn-icon">mdi-plus-circle-outline</v-icon>
+          <span class="btn-label-long">Okunanlara Ekle</span>
+          <span class="btn-label-short">Ekle</span>
         </v-btn>
 
         <v-btn
@@ -100,14 +105,18 @@ var isRead = computed(() => {
           class="action-btn remove-btn"
           @click.stop="handleRemoveBook()"
         >
-          <v-icon left size="18" class="mr-2">mdi-check-circle</v-icon>
-          Okunanlardan Çıkar
+          <v-icon left size="18" class="mr-2 btn-icon">mdi-check-circle</v-icon>
+          <span class="btn-label-long">Okunanlardan Çıkar</span>
+          <span class="btn-label-short">Çıkar</span>
         </v-btn>
       </v-card-actions>
     </v-card>
 </template>
 
 <style scoped>
+/* Buton etiketi: geniş ekranda uzun, telefonda kısa hâli görünür */
+.btn-label-short { display: none; }
+
 /* Book Card Container */
 .book-card {
   width: 100%;
@@ -169,6 +178,7 @@ var isRead = computed(() => {
   position: relative;
   overflow: hidden;
   border-radius: 8px 8px 0 0;
+  height: 280px;
 }
 
 .book-cover {
@@ -252,12 +262,47 @@ var isRead = computed(() => {
 
 /* Responsive Typography */
 @media (max-width: 600px) {
+  /* Telefonda satır başına 2 kart var; sütun ~165px genişliğinde.
+     Kapak ve tipografi buna göre küçülüyor. */
+  .book-cover-wrapper {
+    height: 190px;
+  }
+
   .book-title {
-    font-size: 16px;
+    font-size: 14px;
+    line-height: 1.3;
   }
 
   .book-author {
-    font-size: 13px;
+    font-size: 12px;
+  }
+
+  .book-meta {
+    font-size: 11px;
+    margin-top: 4px;
+  }
+
+  .read-status-badge {
+    top: 6px;
+    right: 6px;
+    padding: 3px 8px;
+  }
+
+  .badge-text {
+    font-size: 9px;
+  }
+
+  /* "Okunanlara Ekle" ~165px sütuna sığmıyordu */
+  .btn-label-long { display: none; }
+  .btn-label-short { display: inline; }
+
+  .action-btn {
+    font-size: 12px;
+    min-height: 32px;
+  }
+
+  .btn-icon {
+    margin-right: 4px !important;
   }
 }
 </style>

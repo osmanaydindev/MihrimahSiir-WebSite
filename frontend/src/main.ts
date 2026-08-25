@@ -10,6 +10,8 @@ import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css';
 import VueDatePicker from '@vuepic/vue-datepicker';
 import '@vuepic/vue-datepicker/dist/main.css'
+// Liste ızgaralarının tek kaynağı — sayfalardaki kopya CSS'in yerine geçti
+import './styles/grids.css'
 // Components
 import App from './App.vue'
 

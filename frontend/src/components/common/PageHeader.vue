@@ -112,9 +112,20 @@ const props = withDefaults(defineProps<Props>(), {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 599px) {
+  /* Başlık bloğu ilk karttan önce ~220px yer kaplıyordu. Dekoratif ikon
+     telefonda gizleniyor, başlık küçülüyor — kazanılan alan doğrudan
+     listeye gidiyor. */
+  .header-icon-wrapper {
+    display: none;
+  }
+
   .page-title {
-    font-size: 28px;
+    font-size: 24px;
+  }
+
+  .page-subtitle {
+    font-size: 14px;
   }
 }
 </style>

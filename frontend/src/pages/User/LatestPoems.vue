@@ -59,8 +59,8 @@ onUnmounted(() => {
 
     <!-- Poems Grid -->
     <div v-if="!loading && poems.length > 0" class="poems-grid">
-      <div class="poems-grid-container">
-        <div v-for="poem in poems" :key="poem.id" class="poem-grid-item">
+      <div class="ao-grid ao-grid--poems">
+        <div v-for="poem in poems" :key="poem.id" class="ao-grid-item">
           <PoemCard :poem="poem" />
         </div>
       </div>
@@ -146,18 +146,6 @@ onUnmounted(() => {
   margin-bottom: 48px;
 }
 
-.poems-grid-container {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 24px;
-}
-
-.poem-grid-item {
-  width: 100%;
-  max-width: 380px;
-}
-
 /* Loading State */
 .loading-container {
   display: flex;
@@ -198,38 +186,11 @@ onUnmounted(() => {
 }
 
 /* Responsive Grid */
-@media (min-width: 600px) {
-  .poem-grid-item {
-    width: calc(50% - 12px);
-  }
-}
-
-@media (min-width: 960px) {
-  .poem-grid-item {
-    width: calc(33.333% - 16px);
-  }
-}
-
-@media (min-width: 1280px) {
-  .poem-grid-item {
-    width: calc(33.333% - 16px);
-  }
-}
-
-@media (min-width: 1920px) {
-  .poem-grid-item {
-    width: calc(25% - 18px);
-  }
-}
-
 /* Mobile Responsive */
 @media (max-width: 768px) {
   .latest-poems-container {
-    padding: 24px 12px;
+    padding: 16px 4px;
   }
 
-  .poems-grid-container {
-    gap: 16px;
-  }
 }
 </style>

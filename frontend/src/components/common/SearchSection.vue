@@ -31,7 +31,7 @@ const handleSearch = () => {
 </script>
 
 <template>
-  <div class="search-section mb-8">
+  <div class="search-section mb-3 mb-sm-8">
     <v-text-field
       class="search-field"
       :model-value="modelValue"
@@ -63,5 +63,17 @@ const handleSearch = () => {
 .search-field {
   max-width: 500px;
   width: 100%;
+}
+
+/* Telefonda arama kutusu tek başına ~110px yer kaplıyor ve ilk kartı
+   ekranın dışına itiyordu; yükseklik ve alt boşluk kısaltıldı. */
+@media (max-width: 599px) {
+  .search-field :deep(.v-field) {
+    --v-input-control-height: 40px;
+  }
+
+  .search-field :deep(.v-input__details) {
+    display: none;
+  }
 }
 </style>

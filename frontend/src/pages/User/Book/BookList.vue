@@ -150,12 +150,11 @@ onMounted(async () => {
 
     <!-- Books Grid -->
     <div v-else>
-      <div class="books-grid d-flex flex-column align-center flex-sm-row flex-sm-wrap justify-sm-center ga-4 mb-12 w-100">
+      <div class="ao-grid ao-grid--books mb-12">
         <div
           v-for="book in books"
           :key="book.id"
-          class="book-grid-item"
-          style="min-width: 300px;"
+          class="ao-grid-item"
         >
           <BookCard
             :book="book"
@@ -286,10 +285,6 @@ onMounted(async () => {
   letter-spacing: 0.2px;
 }
 
-.book-grid-item {
-  animation: fadeInUp 0.6s ease-out both;
-}
-
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -351,7 +346,7 @@ onMounted(async () => {
 /* Responsive Design */
 @media (max-width: 768px) {
   .books-page {
-    padding: 24px 12px;
+    padding: 16px 4px;
   }
 
   .page-title {
@@ -375,6 +370,24 @@ onMounted(async () => {
 @media (max-width: 480px) {
   .page-title {
     font-size: 28px;
+  }
+}
+
+@media (max-width: 599px) {
+  /* Başlık bloğu ilk karttan önce ~220px yer kaplıyordu. Dekoratif ikon
+     telefonda gizleniyor, kazanılan alan doğrudan listeye gidiyor.
+     (Aynı kural components/common/PageHeader.vue içinde de var — bu iki sayfa
+     ortak bileşeni kullanmak yerine başlığı kopyalamış.) */
+  .header-icon-wrapper {
+    display: none;
+  }
+
+  .page-title {
+    font-size: 24px;
+  }
+
+  .page-subtitle {
+    font-size: 14px;
   }
 }
 </style>

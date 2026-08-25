@@ -304,7 +304,26 @@ const undoBookmark = async (poem: any) => {
   }
 
   .poem-content-wrapper {
-    padding: 16px 16px 10px 16px;
+    padding: 12px 14px 8px 14px;
+  }
+
+  /* Kart yüksekliğini asıl belirleyen şey bu. Önizleme telefonda da 155px
+     sabitti; ekranda tek kart kalmasının başlıca sebebi buydu. */
+  .poem-preview {
+    height: 88px;
+    margin-bottom: 4px;
+  }
+
+  .poem-fade {
+    height: 36px;
+  }
+
+  .poem-actions {
+    padding: 8px 12px !important;
+  }
+
+  .read-more-btn {
+    font-size: 12px;
   }
 }
 </style>

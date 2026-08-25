@@ -74,11 +74,13 @@ const { items: authors, loading, hasMore, total, error } = useLazyLoad<AuthorTyp
     <div v-else>
 <!--      <v-container fluid>-->
         <v-row class="w-full">
+          <!-- cols="6": telefonda da 2 sütun. Portre küçükken de okunur,
+               kitap kartıyla aynı mantık. -->
           <v-col
             v-for="author in authors"
             :key="author.id"
-            class="pa-3"
-            cols="12"
+            class="pa-1 pa-sm-3"
+            cols="6"
             sm="6"
             md="4"
             xl="3"
@@ -282,7 +284,7 @@ const { items: authors, loading, hasMore, total, error } = useLazyLoad<AuthorTyp
 /* Responsive Design */
 @media (max-width: 768px) {
   .authors-page {
-    padding: 24px 12px;
+    padding: 16px 4px;
   }
 
   .page-title {
@@ -316,6 +318,24 @@ const { items: authors, loading, hasMore, total, error } = useLazyLoad<AuthorTyp
   .authors-grid {
     grid-template-columns: 1fr;
     gap: 16px;
+  }
+}
+
+@media (max-width: 599px) {
+  /* Başlık bloğu ilk karttan önce ~220px yer kaplıyordu. Dekoratif ikon
+     telefonda gizleniyor, kazanılan alan doğrudan listeye gidiyor.
+     (Aynı kural components/common/PageHeader.vue içinde de var — bu iki sayfa
+     ortak bileşeni kullanmak yerine başlığı kopyalamış.) */
+  .header-icon-wrapper {
+    display: none;
+  }
+
+  .page-title {
+    font-size: 24px;
+  }
+
+  .page-subtitle {
+    font-size: 14px;
   }
 }
 </style>
