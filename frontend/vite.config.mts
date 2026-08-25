@@ -45,6 +45,7 @@ export default defineConfig({
         'src/components/frontend/poem',
         'src/components/frontend/poems',
         'src/components/frontend/reminder',
+        'src/components/feed',
         'src/components/shared',
         'src/components/shared/Table',
       ],

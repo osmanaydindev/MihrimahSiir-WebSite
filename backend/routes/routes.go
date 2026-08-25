@@ -40,6 +40,7 @@ func Setup(app *fiber.App) {
 	SetupFriendshipRoutes(app)
 	SetupAuthorRoutes(app)
 	SetupBookRequestRoutes(app)
+	SetupFeedRoutes(app)
 
 }
 

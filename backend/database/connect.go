@@ -43,6 +43,25 @@ func ConnectDb() {
 
 	DB = db
 
+	// Many2many join tablolarını açık modellere bağla. AutoMigrate'ten ÖNCE
+	// çağrılmak zorunda: sonrasında GORM ilişkiyi kendi ürettiği şemayla
+	// kurar ve CreatedAt kolonu hiç eklenmez. Tablo adları değişmiyor,
+	// mevcut veriye dokunulmuyor — sadece kolon ekleniyor.
+	joins := []struct {
+		model interface{}
+		field string
+		join  interface{}
+	}{
+		{&models.Admin{}, "AdminLikedPoems", &models.AdminLikedPoem{}},
+		{&models.Admin{}, "AdminBookmarkPoems", &models.AdminBookmarkPoem{}},
+		{&models.Admin{}, "UserBooksRead", &models.UserBookRead{}},
+	}
+	for _, j := range joins {
+		if err := db.SetupJoinTable(j.model, j.field, j.join); err != nil {
+			panic(fmt.Sprintf("Could not set up join table for %s: %v", j.field, err))
+		}
+	}
+
 	err = db.AutoMigrate(
 		&models.Poem{},
 		&models.Admin{},
@@ -56,6 +75,8 @@ func ConnectDb() {
 		&models.BookVisibility{},
 		&models.BookRequest{},
 		&models.MailLog{},
+		&models.CommentLike{},
+		&models.CommentSave{},
 	)
 	if err != nil {
 		panic("Could not migrate to the database")

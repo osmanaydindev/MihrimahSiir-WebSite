@@ -90,15 +90,50 @@ export interface AdminBasicInfo {
 }
 
 // Comment Types
+// Go tarafındaki models.Comment ile hizalı. Önceki hâli uydurmaydı:
+// user_id / comment / updated_at alanları backend'de hiç yok, gerçek adlar
+// admin_id / content / title.
 export interface Comment {
   id: number
-  user_id: number
-  admin_id?: number
+  admin_id: number
   book_id: number
-  comment: string
+  title: string
+  content: string
   page?: number
+  is_deleted?: boolean
   created_at: string
-  updated_at: string
+}
+
+// Feed Types
+export interface FeedAuthor {
+  id: number
+  username: string
+  profile_image: string
+}
+
+export type FeedKind = 'comment' | 'poem_like' | 'book_read'
+
+export interface FeedItem {
+  kind: FeedKind
+  id: number
+  created_at: string
+  author: FeedAuthor
+
+  // kind === 'comment'
+  title?: string
+  content?: string
+  page?: number
+  book_id?: number
+  book_name?: string
+  book_slug?: string
+  like_count: number
+  is_liked: boolean
+  is_saved: boolean
+
+  // kind === 'poem_like'
+  poem_title?: string
+  poem_slug?: string
+  poem_author?: string
 }
 
 // Author Types

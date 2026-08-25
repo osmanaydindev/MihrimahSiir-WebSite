@@ -18,6 +18,7 @@ import Reminder from "../pages/User/Reminder.vue";
 import ReadsBooks from "../pages/User/ReadsBooks.vue";
 import BookToReads from "../pages/User/NotReadsBooks.vue";
 import Friends from "../pages/User/Friends.vue";
+import Feed from "../pages/User/Feed.vue";
 import Authors from "../pages/User/Authors.vue";
 import AuthorDetail from "../pages/User/AuthorDetail.vue";
 import UserProfile from "../pages/User/UserProfile.vue";
@@ -215,6 +216,12 @@ const routes: Array<RouteRecordRaw> = [
         path: '/friends',
         name: 'Friends',
         component:Friends,
+        meta: { requiresAuth: true },
+      },
+      {
+        path: '/feed',
+        name: 'Feed',
+        component:Feed,
         meta: { requiresAuth: true },
       },
       {

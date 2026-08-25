@@ -40,6 +40,12 @@ const items   = computed(() => {
       requiresRole: [1, 2, 3],
     },
     {
+      title: 'Akış',
+      value: 'feed',
+      route: '/feed',
+      icon: 'mdi-timeline-text-outline',
+    },
+    {
       title: 'Şiirler',
       value: 'poems-group',
       icon: 'mdi-book-open-page-variant-outline',

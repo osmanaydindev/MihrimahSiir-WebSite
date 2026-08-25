@@ -18,6 +18,8 @@ declare module 'vue' {
     EmptyStateCard: typeof import('./components/shared/EmptyStateCard.vue')['default']
     EndOfListMessage: typeof import('./components/common/EndOfListMessage.vue')['default']
     ErrorState: typeof import('./components/common/ErrorState.vue')['default']
+    FeedActivityRow: typeof import('./components/feed/FeedActivityRow.vue')['default']
+    FeedQuoteCard: typeof import('./components/feed/FeedQuoteCard.vue')['default']
     Footer: typeof import('./components/shared/Footer.vue')['default']
     FriendActionButtons: typeof import('./components/profile/FriendActionButtons.vue')['default']
     FriendshipCard: typeof import('./components/friends/FriendshipCard.vue')['default']

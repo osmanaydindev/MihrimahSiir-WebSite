@@ -484,6 +484,10 @@ func getUsernameByID(userID uint) string {
 }
 
 // GetFriendIDs returns all friend IDs for a given user (including the user themselves)
+//
+// Not: helpers.FriendIDs ile aynı işi yapar. Akış helpers sürümünü kullanır
+// (helpers paketi controllers'ı import edemez); bu sürüm mevcut çağıranlar
+// için duruyor.
 func GetFriendIDs(userID uint) []uint {
 	var friendships []models.Friendship
 	database.DB.Where(
@@ -491,12 +495,9 @@ func GetFriendIDs(userID uint) []uint {
 		userID, userID, "accepted",
 	).Find(&friendships)
 
-	fmt.Printf("[DEBUG GetFriendIDs] userID=%d, found %d friendships\n", userID, len(friendships))
-
 	friendIDs := []uint{userID} // Include self
 
 	for _, fs := range friendships {
-		fmt.Printf("[DEBUG GetFriendIDs] Friendship: ID=%d, UserID=%d, FriendID=%d, Status=%s\n", fs.ID, fs.UserID, fs.FriendID, fs.Status)
 		if fs.UserID == userID {
 			friendIDs = append(friendIDs, fs.FriendID)
 		} else {
@@ -504,6 +505,5 @@ func GetFriendIDs(userID uint) []uint {
 		}
 	}
 
-	fmt.Printf("[DEBUG GetFriendIDs] Final friendIDs for user %d: %v\n", userID, friendIDs)
 	return friendIDs
 }

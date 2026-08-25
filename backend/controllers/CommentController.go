@@ -37,6 +37,11 @@ func AddComment(c *fiber.Ctx) error {
 		Content:   data["content"],
 		Page:      page,
 		IsDeleted: false,
+		// Yeni kural altında yazıldı: yazarın profili herkese açıksa bu
+		// alıntı akışta arkadaş olmayanlara da görünebilir. Bu alan
+		// eklenmeden önceki yorumlar false kalır ve yalnızca arkadaşlara
+		// görünmeye devam eder.
+		AllowPublicFeed: true,
 	}
 	if err := database.DB.Create(&comment).Error; err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
