@@ -102,6 +102,10 @@ Composables carry the reusable behavior — `usePoemActions`, `useBookActions`, 
 
 Two layouts: `layouts/default.vue` (user site) and `layouts/adminPanel.vue` (`/panel` and `/*-management` routes).
 
+**Every new page under `layouts/default.vue` must put `flex-column` on its root element.** The layout renders `<router-view class="d-flex w-full px-3 px-sm-6 …">` and Vue merges those classes onto the page component's **root element** — so the page root becomes a `flex-direction: row` container and its direct children (header, tabs, list) end up side by side instead of stacked. Fix it either with `class="my-page d-flex flex-column"` in the template (`Reminder.vue`, `Friends.vue`, `Feed.vue`) or `display: flex; flex-direction: column` in the scoped CSS (`Poems.vue`, `Book/BookList.vue`). The root should also carry `width: 100%` — as a flex item it otherwise shrinks to its content — plus `max-width` and `margin: 0 auto`. This failure is silent: it type-checks, it builds, and it only shows up when you look at the rendered page.
+
+Shared list grids live in `src/styles/grids.css` (`.ao-grid`, `.ao-grid--poems`, `.ao-grid--books`, `.ao-grid-item`), imported once in `main.ts`. Poem cards stay one-per-row on phones because the card carries a text preview; books and authors go two-up. Don't re-declare these rules in a page's scoped CSS — that is what the old per-page copies did, and changing density meant editing eight files.
+
 `components/shared/Table/Table.vue` is **not** a generic table: it switches on `route.fullPath` and hardcodes `<td>`s per management page. New admin pages are usually better off with their own `v-data-table` — `pages/Management/BookRequestManagement.vue` does that. Its `imagePath()` now routes through `utils/imageHelper.getImageUrl`, so absolute URLs (e.g. Open Library covers) survive instead of being prefixed with the local `/uploads` host.
 
 ## Known rough edges

@@ -19,7 +19,11 @@ function switchTab(next: 'feed' | 'saved') {
 </script>
 
 <template>
-  <div class="feed-page">
+  <!-- d-flex flex-column ZORUNLU: layouts/default.vue'daki
+       <router-view class="d-flex ..."> sınıfları bu kök elemente kopyalanıyor.
+       Sadece "feed-page" yazılırsa element satır yönlü flex kabı olur ve
+       başlık / sekmeler / liste yan yana dizilir. -->
+  <div class="feed-page d-flex flex-column">
     <PageHeader
       icon="mdi-timeline-text-outline"
       icon-color="#7e57c2"
@@ -65,9 +69,9 @@ function switchTab(next: 'feed' | 'saved') {
 
 <style scoped>
 .feed-page {
+  width: 100%;
   max-width: 680px;
   margin: 0 auto;
-  width: 100%;
   padding: 40px 20px;
 }
 
