@@ -12,12 +12,10 @@ import axios from 'axios';
 import VueAxios from "vue-axios";
 
 
-// axios.defaults.baseURL = "http://127.0.0.1:8080/";
-
+// Ortama göre .env(.local) içindeki VITE_API_BASE_URL belirler.
+// (Buradaki yoruma alınmış sabit adresler silindi: biri artık kullanılmayan
+// eski sunucuyu gösteriyordu ve yanlış yere yönlendirme riski taşıyordu.)
 axios.defaults.baseURL = import.meta.env.VITE_API_BASE_URL
-
-// axios.defaults.baseURL = "http://89.117.37.208:8080/";
-// axios.defaults.baseURL = "/api/";
 
 axios.defaults.withCredentials = true;
 
