@@ -32,6 +32,85 @@ type createBookRequestPayload struct {
 	Note string `json:"note"`
 }
 
+type previewBookRequestPayload struct {
+	ISBN string `json:"isbn"`
+}
+
+// bookRequestPreview, kullanıcıya gösterilen önizleme. Kalıcı bir kayıt
+// değil; alan adları bilinçli olarak BookRequest'in fetched_* alanlarıyla
+// aynı şekli taşır, böylece arayüz aynı kartı yeniden kullanabiliyor.
+type bookRequestPreview struct {
+	ISBN          string `json:"isbn"`
+	MetadataFound bool   `json:"metadata_found"`
+	Title         string `json:"title"`
+	Authors       string `json:"authors"`
+	Pages         int    `json:"pages"`
+	CoverURL      string `json:"cover_url"`
+	Description   string `json:"description"`
+	Publisher     string `json:"publisher"`
+	PublishDate   string `json:"publish_date"`
+}
+
+// PreviewBookRequest, ISBN'i doğrulayıp Open Library anlık görüntüsünü
+// döner ama hiçbir şey kaydetmez ve mail tetiklemez. Kullanıcı yanlış
+// kitabı istemeden önce doğrulayabilsin diye var.
+//
+// Kontrol sırası CreateBookRequest ile aynı: kayıt açılmasa da dış çağrı
+// maliyetli, o yüzden "kitap zaten var / zaten istenmiş" gibi ucuz
+// elemeler önizlemede de çalışıyor.
+func PreviewBookRequest(c *fiber.Ctx) error {
+	userID := GetUserId(c)
+	if userID == 0 {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"message": "Oturum bulunamadı",
+		})
+	}
+
+	var payload previewBookRequestPayload
+	if err := c.BodyParser(&payload); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Geçersiz istek gövdesi",
+		})
+	}
+
+	isbn, err := security.NewValidator().NormalizeISBN(payload.ISBN)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"message": "Geçersiz ISBN. Lütfen kitabın arkasındaki 13 haneli numarayı girin.",
+		})
+	}
+
+	if status, message := checkRequestLimits(userID, isbn); message != "" {
+		return c.Status(status).JSON(fiber.Map{"message": message})
+	}
+
+	preview := bookRequestPreview{ISBN: isbn}
+
+	meta, fetchErr := openlibrary.Default().FetchByISBN(c.UserContext(), isbn)
+	if fetchErr != nil {
+		if errors.Is(fetchErr, openlibrary.ErrNotFound) {
+			// Kayıt yok: talep yine açılabilir, bilgileri admin elle girer.
+			return c.JSON(fiber.Map{"preview": preview})
+		}
+		log.Printf("[book-request] önizleme için Open Library çağrısı başarısız (%s): %v", isbn, fetchErr)
+		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
+			"message": "Open Library'ye şu anda ulaşılamıyor. Lütfen birazdan tekrar deneyin.",
+		})
+	}
+
+	sanitizer := security.NewSanitizer()
+	preview.MetadataFound = true
+	preview.Title = sanitizer.SanitizeString(meta.Title, 500)
+	preview.Authors = sanitizer.SanitizeString(strings.Join(meta.Authors, ", "), 500)
+	preview.Pages = meta.NumberOfPages
+	preview.CoverURL = meta.CoverURL
+	preview.Description = sanitizer.SanitizeString(meta.Description, 5000)
+	preview.Publisher = sanitizer.SanitizeString(meta.Publisher, 255)
+	preview.PublishDate = sanitizer.SanitizeString(meta.PublishDate, 64)
+
+	return c.JSON(fiber.Map{"preview": preview})
+}
+
 // CreateBookRequest, kullanıcının ISBN ile açtığı talebi kaydeder.
 // Kontrol sırası bilinçli: ucuz olanlar (checksum, indeksli SELECT'ler)
 // önce çalışır, dış API çağrısı ve mail ancak hepsi geçilirse tetiklenir.

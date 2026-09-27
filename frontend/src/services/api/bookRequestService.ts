@@ -1,5 +1,5 @@
 import { apiClient } from './client'
-import type { AdminBasicInfo, Book, BookRequest, BookRequestStatus } from '../../types'
+import type { AdminBasicInfo, Book, BookRequest, BookRequestPreview, BookRequestStatus } from '../../types'
 
 export interface BookRequestListResponse {
   data: BookRequest[]
@@ -21,6 +21,10 @@ export interface ApproveBookRequestPayload {
 }
 
 export const bookRequestService = {
+  // Kullanıcı: ISBN'i doğrula ve önizlemeyi getir (kayıt açmaz, mail göndermez)
+  preview: (isbn: string) =>
+    apiClient.post<{ preview: BookRequestPreview }>('/preview-book-request', { isbn }),
+
   // Kullanıcı: ISBN ile yeni talep oluştur
   create: (isbn: string, note?: string) =>
     apiClient.post<{ message: string; request: BookRequest }>('/create-book-request', { isbn, note }),

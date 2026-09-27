@@ -11,7 +11,18 @@ import { useConfirmDialog } from '../../composables/useConfirmDialog'
 import { getImageUrl } from '../../utils/imageHelper'
 import type { BookRequest, BookRequestStatus } from '../../types'
 
-const { requests, loading, actionLoading, fetchMyRequests, createRequest, cancelRequest } = useBookRequests()
+const {
+  requests,
+  loading,
+  actionLoading,
+  preview,
+  previewLoading,
+  fetchMyRequests,
+  fetchPreview,
+  clearPreview,
+  createRequest,
+  cancelRequest
+} = useBookRequests()
 const { snackbar } = useNotification()
 const { dialog, show: showConfirm } = useConfirmDialog()
 
@@ -40,13 +51,27 @@ const formatDate = (value: string) => {
   })
 }
 
+// 1. adım: ISBN'i doğrula ve kitabı göster. Burada henüz kayıt açılmıyor,
+// mail gitmiyor — kullanıcı yanlış kitabı istemeden fark edebilsin.
+const showPreview = async () => {
+  if (previewLoading.value || actionLoading.value) return
+  await fetchPreview(newIsbn.value)
+}
+
+// 2. adım: önizlemedeki kitap doğruysa talebi gönder.
 const submitRequest = async () => {
-  const ok = await createRequest(newIsbn.value, newNote.value)
+  if (!preview.value) return
+  const ok = await createRequest(preview.value.isbn, newNote.value)
   if (ok) {
     newIsbn.value = ''
     newNote.value = ''
     await fetchMyRequests()
   }
+}
+
+const resetForm = () => {
+  clearPreview()
+  newNote.value = ''
 }
 
 const confirmCancel = (request: BookRequest) => {
@@ -73,7 +98,7 @@ onMounted(fetchMyRequests)
       total-label="bekleyen istek"
     />
 
-    <!-- YENİ İSTEK -->
+    <!-- YENİ İSTEK — 1. adım: ISBN, 2. adım: önizleme onayı -->
     <v-card class="request-form mb-8 pa-4">
       <v-text-field
         v-model="newIsbn"
@@ -83,32 +108,113 @@ onMounted(fetchMyRequests)
         variant="outlined"
         hint="Kitabın arka kapağındaki 13 haneli numara (10 haneli eski ISBN de olur)."
         persistent-hint
-        :disabled="actionLoading"
+        :disabled="previewLoading || actionLoading || !!preview"
         class="mb-4"
-        @keyup.enter="submitRequest"
+        @keyup.enter="showPreview"
       />
-      <v-textarea
-        v-model="newNote"
-        label="Not (opsiyonel)"
-        placeholder="Bu kitabı neden istediğini yazabilirsin"
-        variant="outlined"
-        rows="2"
-        auto-grow
-        :disabled="actionLoading"
-        class="mb-2"
-      />
-      <div class="d-flex justify-end">
+
+      <!-- 1. ADIM -->
+      <div v-if="!preview" class="d-flex justify-end">
         <v-btn
           color="primary"
           variant="flat"
-          prepend-icon="mdi-send"
-          :loading="actionLoading"
+          prepend-icon="mdi-magnify"
+          :loading="previewLoading"
           style="text-transform: none"
-          @click="submitRequest"
+          @click="showPreview"
         >
-          İstek Gönder
+          Kitabı Bul
         </v-btn>
       </div>
+
+      <!-- 2. ADIM -->
+      <template v-else>
+        <div class="preview-box pa-4 mb-4">
+          <div class="text-overline text-grey-lighten-1 mb-3">Bu kitap mı?</div>
+
+          <div class="d-flex ga-4">
+            <v-img
+              v-if="preview.cover_url"
+              :src="getImageUrl(preview.cover_url)"
+              width="90"
+              max-width="90"
+              height="130"
+              cover
+              class="flex-grow-0 rounded"
+            />
+            <v-icon v-else size="56" color="grey-darken-1" class="flex-grow-0 mt-4">mdi-book-outline</v-icon>
+
+            <div class="flex-grow-1">
+              <div class="text-subtitle-1 font-weight-medium text-white">
+                {{ preview.title || 'Bilgi bulunamadı' }}
+              </div>
+              <div v-if="preview.authors" class="text-body-2 text-grey-lighten-1 mt-1">
+                {{ preview.authors }}
+              </div>
+              <div class="text-body-2 text-grey-lighten-1 mt-1">
+                ISBN: {{ preview.isbn }}
+                <span v-if="preview.pages"> · {{ preview.pages }} sayfa</span>
+              </div>
+              <div
+                v-if="preview.publisher || preview.publish_date"
+                class="text-caption text-grey-darken-1 mt-1"
+              >
+                <span v-if="preview.publisher">{{ preview.publisher }}</span>
+                <span v-if="preview.publisher && preview.publish_date"> · </span>
+                <span v-if="preview.publish_date">{{ preview.publish_date }}</span>
+              </div>
+            </div>
+          </div>
+
+          <p v-if="preview.description" class="preview-description text-body-2 text-grey-lighten-1 mt-3 mb-0">
+            {{ preview.description }}
+          </p>
+
+          <v-alert
+            v-if="!preview.metadata_found"
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mt-3 text-body-2"
+          >
+            Bu ISBN için otomatik bilgi bulunamadı. Yine de isteyebilirsin; kitap bilgilerini yönetici elle girecek.
+          </v-alert>
+        </div>
+
+        <v-textarea
+          v-model="newNote"
+          label="Not (opsiyonel)"
+          placeholder="Bu kitabı neden istediğini yazabilirsin"
+          variant="outlined"
+          rows="2"
+          auto-grow
+          :disabled="actionLoading"
+          class="mb-2"
+        />
+
+        <div class="d-flex justify-end flex-wrap ga-2">
+          <v-btn
+            variant="tonal"
+            color="grey-lighten-1"
+            prepend-icon="mdi-arrow-left"
+            :disabled="actionLoading"
+            style="text-transform: none"
+            @click="resetForm"
+          >
+            Bu Değil
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="flat"
+            prepend-icon="mdi-send"
+            :loading="actionLoading"
+            style="text-transform: none"
+            @click="submitRequest"
+          >
+            İste
+          </v-btn>
+        </div>
+      </template>
     </v-card>
 
     <!-- İSTEKLERİM -->
@@ -242,6 +348,21 @@ onMounted(fetchMyRequests)
   background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
   border: 2px solid #424242;
   border-radius: 8px;
+}
+
+.preview-box {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid #424242;
+  border-radius: 8px;
+}
+
+/* Open Library açıklamaları bazen çok uzun; kart formu boğmasın. */
+.preview-description {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+  white-space: pre-line;
 }
 
 .section-title {

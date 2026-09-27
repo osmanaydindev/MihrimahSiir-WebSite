@@ -82,6 +82,20 @@ export interface BookRequest {
   created_book?: Book | null
 }
 
+// İstek gönderilmeden önce gösterilen Open Library önizlemesi.
+// Kayıtlı bir talep değil, sadece anlık görüntü.
+export interface BookRequestPreview {
+  isbn: string
+  metadata_found: boolean
+  title: string
+  authors: string
+  pages: number
+  cover_url: string
+  description: string
+  publisher: string
+  publish_date: string
+}
+
 export interface AdminBasicInfo {
   id: number
   username: string

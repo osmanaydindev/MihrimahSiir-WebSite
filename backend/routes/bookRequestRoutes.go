@@ -9,6 +9,15 @@ import (
 )
 
 func SetupBookRequestRoutes(app *fiber.App) {
+	// Önizleme kayıt açmaz ve mail göndermez, ama yine bir dış API çağrısı
+	// yapar; talepten daha cömert ama serbest değil.
+	app.Post("/preview-book-request",
+		middlewares.UserRateLimiter(
+			middlewares.RateLimiterConfig{Max: 20, Expiration: 1 * time.Hour},
+			"Çok fazla ISBN sorgusu yaptınız. Lütfen bir saat sonra tekrar deneyin.",
+		),
+		controllers.PreviewBookRequest)
+
 	// Kullanıcı tarafı. Talep oluşturma her seferinde bir dış API
 	// çağrısı ve bir mail tetiklediği için kullanıcı bazlı limitli.
 	app.Post("/create-book-request",
