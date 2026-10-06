@@ -71,6 +71,7 @@ export interface BookRequest {
   fetched_publish_date: string
   open_library_key: string
   metadata_found: boolean
+  metadata_source: string
   user_note: string
   admin_note: string
   reviewed_by?: number | null
@@ -94,6 +95,8 @@ export interface BookRequestPreview {
   description: string
   publisher: string
   publish_date: string
+  // Veriyi döndüren servis: 'google_books' | 'open_library' (bulunamazsa boş)
+  source: string
 }
 
 export interface AdminBasicInfo {

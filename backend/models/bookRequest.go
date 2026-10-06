@@ -10,7 +10,7 @@ const (
 )
 
 // BookRequest, kullanıcının ISBN ile açtığı kitap ekleme talebi.
-// Open Library verisi talep anında çekilip burada saklanır (approval'da
+// Dış kaynak verisi talep anında çekilip burada saklanır (approval'da
 // yeniden çekilmez): admin listesi N talebi N dış çağrı olmadan
 // gösterebilsin, onay dış servis çökse de çalışsın ve admin'in
 // incelediği veriyle kaydedilen veri aynı olsun diye.
@@ -20,7 +20,7 @@ type BookRequest struct {
 	ISBN   string `json:"isbn" gorm:"type:varchar(13);not null;index"` // her zaman ISBN-13
 	Status string `json:"status" gorm:"type:varchar(20);not null;default:'pending';index"`
 
-	// Open Library anlık görüntüsü
+	// Dış kaynak (Google Books veya Open Library) anlık görüntüsü
 	FetchedTitle       string `json:"fetched_title" gorm:"type:varchar(500)"`
 	FetchedAuthors     string `json:"fetched_authors" gorm:"type:varchar(500)"` // virgülle ayrılmış
 	FetchedPages       int    `json:"fetched_pages"`
@@ -30,6 +30,10 @@ type BookRequest struct {
 	FetchedPublishDate string `json:"fetched_publish_date" gorm:"type:varchar(64)"`
 	OpenLibraryKey     string `json:"open_library_key" gorm:"type:varchar(64)"`
 	MetadataFound      bool   `json:"metadata_found" gorm:"default:false"`
+	// MetadataSource, veriyi döndüren servis (bookmeta.Source* sabitleri).
+	// İki kaynağın güvenilirliği farklı olduğu için admin incelerken
+	// bilginin nereden geldiğini görmek gerekiyor.
+	MetadataSource string `json:"metadata_source" gorm:"type:varchar(32)"`
 
 	UserNote      string     `json:"user_note" gorm:"type:varchar(500)"`
 	AdminNote     string     `json:"admin_note" gorm:"type:varchar(500)"` // red gerekçesi

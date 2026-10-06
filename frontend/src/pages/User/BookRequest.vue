@@ -42,6 +42,19 @@ const statusMeta = (status: BookRequestStatus) => {
   }
 }
 
+// Bilginin hangi servisten geldiği önizlemede gösteriliyor: iki kaynağın
+// güvenilirliği farklı, kullanıcı neye baktığını bilsin.
+const sourceLabel = (source: string) => {
+  switch (source) {
+    case 'google_books':
+      return 'Google Books'
+    case 'open_library':
+      return 'Open Library'
+    default:
+      return ''
+  }
+}
+
 const formatDate = (value: string) => {
   if (!value) return ''
   return new Date(value).toLocaleDateString('tr-TR', {
@@ -169,6 +182,10 @@ onMounted(fetchMyRequests)
           <p v-if="preview.description" class="preview-description text-body-2 text-grey-lighten-1 mt-3 mb-0">
             {{ preview.description }}
           </p>
+
+          <div v-if="sourceLabel(preview.source)" class="text-caption text-grey-darken-1 mt-3">
+            Kaynak: {{ sourceLabel(preview.source) }}
+          </div>
 
           <v-alert
             v-if="!preview.metadata_found"

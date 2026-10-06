@@ -4,13 +4,16 @@ import (
 	"backend/database"
 	"backend/middlewares"
 	"backend/routes"
+	"backend/services/googlebooks"
 	"backend/services/mail"
 	"backend/util"
 	ws "backend/websocket"
+	"log"
+	"os"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/joho/godotenv"
-	"os"
 )
 
 func main() {
@@ -23,6 +26,13 @@ func main() {
 	// tüm kullanıcı oturumları düşer; bu yüzden eksikse başlatma durur.
 	if err := util.InitJWT(); err != nil {
 		panic("JWT yapılandırması hatalı: " + err.Error())
+	}
+
+	// Google Books, kitap meta verisinde birincil kaynak. Anahtarsız da
+	// çalışır ama paylaşımlı anonim kotaya düşer ve sık 429 alır; bu
+	// durumda Türkçe kitaplar bulunamaz, o yüzden uyar.
+	if !googlebooks.Default().HasAPIKey() {
+		log.Println("[uyarı] GOOGLE_BOOKS_API_KEY tanımsız: kitap aramaları anonim kotaya düşecek")
 	}
 
 	// Upload klasörlerini hazırla (volume mount edilmiş olsa da boş olabilir)

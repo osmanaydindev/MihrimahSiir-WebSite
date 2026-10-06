@@ -5,8 +5,8 @@ import (
 	"backend/helpers"
 	"backend/models"
 	"backend/security"
+	"backend/services/bookmeta"
 	"backend/services/mail"
-	"backend/services/openlibrary"
 	ws "backend/websocket"
 	"errors"
 	"fmt"
@@ -36,6 +36,22 @@ type previewBookRequestPayload struct {
 	ISBN string `json:"isbn"`
 }
 
+// applyMetaToRequest, dış kaynaktan gelen anlık görüntüyü talebe yazar.
+// Create ve Refresh aynı alanları doldurduğu için tek yerde duruyor.
+func applyMetaToRequest(request *models.BookRequest, meta *bookmeta.Meta) {
+	sanitizer := security.NewSanitizer()
+	request.MetadataFound = true
+	request.MetadataSource = meta.Source
+	request.FetchedTitle = sanitizer.SanitizeString(meta.Title, 500)
+	request.FetchedAuthors = sanitizer.SanitizeString(strings.Join(meta.Authors, ", "), 500)
+	request.FetchedPages = meta.NumberOfPages
+	request.FetchedCoverURL = meta.CoverURL
+	request.FetchedDescription = sanitizer.SanitizeString(meta.Description, 5000)
+	request.FetchedPublisher = sanitizer.SanitizeString(meta.Publisher, 255)
+	request.FetchedPublishDate = sanitizer.SanitizeString(meta.PublishDate, 64)
+	request.OpenLibraryKey = meta.OpenLibraryKey
+}
+
 // bookRequestPreview, kullanıcıya gösterilen önizleme. Kalıcı bir kayıt
 // değil; alan adları bilinçli olarak BookRequest'in fetched_* alanlarıyla
 // aynı şekli taşır, böylece arayüz aynı kartı yeniden kullanabiliyor.
@@ -49,6 +65,7 @@ type bookRequestPreview struct {
 	Description   string `json:"description"`
 	Publisher     string `json:"publisher"`
 	PublishDate   string `json:"publish_date"`
+	Source        string `json:"source"`
 }
 
 // PreviewBookRequest, ISBN'i doğrulayıp Open Library anlık görüntüsünü
@@ -86,20 +103,21 @@ func PreviewBookRequest(c *fiber.Ctx) error {
 
 	preview := bookRequestPreview{ISBN: isbn}
 
-	meta, fetchErr := openlibrary.Default().FetchByISBN(c.UserContext(), isbn)
+	meta, fetchErr := bookmeta.Lookup(c.UserContext(), isbn)
 	if fetchErr != nil {
-		if errors.Is(fetchErr, openlibrary.ErrNotFound) {
+		if errors.Is(fetchErr, bookmeta.ErrNotFound) {
 			// Kayıt yok: talep yine açılabilir, bilgileri admin elle girer.
 			return c.JSON(fiber.Map{"preview": preview})
 		}
-		log.Printf("[book-request] önizleme için Open Library çağrısı başarısız (%s): %v", isbn, fetchErr)
+		// Ağ/kota hatası: kayıt yok demek değil, tekrar denemek anlamlı.
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
-			"message": "Open Library'ye şu anda ulaşılamıyor. Lütfen birazdan tekrar deneyin.",
+			"message": "Kitap bilgisi servislerine şu anda ulaşılamıyor. Lütfen birazdan tekrar deneyin.",
 		})
 	}
 
 	sanitizer := security.NewSanitizer()
 	preview.MetadataFound = true
+	preview.Source = meta.Source
 	preview.Title = sanitizer.SanitizeString(meta.Title, 500)
 	preview.Authors = sanitizer.SanitizeString(strings.Join(meta.Authors, ", "), 500)
 	preview.Pages = meta.NumberOfPages
@@ -160,21 +178,8 @@ func CreateBookRequest(c *fiber.Ctx) error {
 		UserNote: note,
 	}
 
-	meta, fetchErr := openlibrary.Default().FetchByISBN(c.UserContext(),isbn)
-	if fetchErr != nil {
-		if !errors.Is(fetchErr, openlibrary.ErrNotFound) {
-			log.Printf("[book-request] Open Library çağrısı başarısız (%s): %v", isbn, fetchErr)
-		}
-	} else {
-		request.MetadataFound = true
-		request.FetchedTitle = sanitizer.SanitizeString(meta.Title, 500)
-		request.FetchedAuthors = sanitizer.SanitizeString(strings.Join(meta.Authors, ", "), 500)
-		request.FetchedPages = meta.NumberOfPages
-		request.FetchedCoverURL = meta.CoverURL
-		request.FetchedDescription = sanitizer.SanitizeString(meta.Description, 5000)
-		request.FetchedPublisher = sanitizer.SanitizeString(meta.Publisher, 255)
-		request.FetchedPublishDate = sanitizer.SanitizeString(meta.PublishDate, 64)
-		request.OpenLibraryKey = meta.EditionKey
+	if meta, fetchErr := bookmeta.Lookup(c.UserContext(), isbn); fetchErr == nil {
+		applyMetaToRequest(&request, meta)
 	}
 
 	if err := database.DB.Create(&request).Error; err != nil {
@@ -611,28 +616,19 @@ func RefreshBookRequest(c *fiber.Ctx) error {
 		})
 	}
 
-	meta, err := openlibrary.Default().FetchByISBN(c.UserContext(),request.ISBN)
+	meta, err := bookmeta.Lookup(c.UserContext(), request.ISBN)
 	if err != nil {
-		if errors.Is(err, openlibrary.ErrNotFound) {
+		if errors.Is(err, bookmeta.ErrNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-				"message": "Open Library'de bu ISBN için kayıt bulunamadı.",
+				"message": "Bu ISBN için hiçbir kaynakta kayıt bulunamadı.",
 			})
 		}
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
-			"message": "Open Library'ye şu anda ulaşılamıyor.",
+			"message": "Kitap bilgisi servislerine şu anda ulaşılamıyor.",
 		})
 	}
 
-	sanitizer := security.NewSanitizer()
-	request.MetadataFound = true
-	request.FetchedTitle = sanitizer.SanitizeString(meta.Title, 500)
-	request.FetchedAuthors = sanitizer.SanitizeString(strings.Join(meta.Authors, ", "), 500)
-	request.FetchedPages = meta.NumberOfPages
-	request.FetchedCoverURL = meta.CoverURL
-	request.FetchedDescription = sanitizer.SanitizeString(meta.Description, 5000)
-	request.FetchedPublisher = sanitizer.SanitizeString(meta.Publisher, 255)
-	request.FetchedPublishDate = sanitizer.SanitizeString(meta.PublishDate, 64)
-	request.OpenLibraryKey = meta.EditionKey
+	applyMetaToRequest(&request, meta)
 
 	if err := database.DB.Save(&request).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
