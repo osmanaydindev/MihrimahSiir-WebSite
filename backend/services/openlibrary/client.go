@@ -28,7 +28,9 @@ const (
 	// Toplam bütçe 10s: 5s ana çağrı + 2 x 2.5s açıklama çağrısı.
 	primaryTimeout     = 5 * time.Second
 	descriptionTimeout = 2500 * time.Millisecond
-	totalBudget        = 10 * time.Second
+	// Kapak varlık kontrolü ana akışa takılmasın diye kısa tutuldu.
+	coverTimeout = 2 * time.Second
+	totalBudget  = 10 * time.Second
 )
 
 // BookMeta, onay ekranında gösterilecek kitap verisi.
@@ -276,4 +278,37 @@ func (c *Client) get(ctx context.Context, url string, timeout time.Duration) ([]
 	}
 
 	return io.ReadAll(io.LimitReader(resp.Body, maxBodyBytes))
+}
+
+// CoverURLForISBN, kapak servisinde bu ISBN için görsel varsa URL'ini
+// döner, yoksa boş string. Birincil kaynakta (Google Books) kapak
+// gelmediğinde çağrılır.
+//
+// default=false olmadan servis, kapağı olmayan ISBN'ler için 404 yerine
+// 43 baytlık boş bir GIF döndürüyor; varlık kontrolü bu parametre
+// olmadan yapılamaz. Saklanan URL ise parametresiz hâli: görsel
+// etiketinde fazladan sorgu dizgisi taşımanın anlamı yok.
+func (c *Client) CoverURLForISBN(ctx context.Context, isbn13 string) string {
+	coverURL := fmt.Sprintf("%sb/isbn/%s-L.jpg", coverURLPrefix, isbn13)
+
+	reqCtx, cancel := context.WithTimeout(ctx, coverTimeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodHead, coverURL+"?default=false", nil)
+	if err != nil {
+		return ""
+	}
+	req.Header.Set("User-Agent", userAgent)
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return ""
+	}
+	_, _ = io.Copy(io.Discard, resp.Body)
+	_ = resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return ""
+	}
+	return coverURL
 }

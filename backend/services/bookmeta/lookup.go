@@ -57,7 +57,7 @@ func Lookup(ctx context.Context, isbn13 string) (*Meta, error) {
 
 	if meta, err := googlebooks.Default().FetchByISBN(ctx, isbn13); err == nil {
 		log.Printf("[bookmeta] %s: Google Books yanıt verdi (%q)", isbn13, meta.Title)
-		return fromGoogle(meta), nil
+		return withCoverFallback(ctx, fromGoogle(meta)), nil
 	} else if errors.Is(err, googlebooks.ErrNotFound) {
 		log.Printf("[bookmeta] %s: Google Books'ta kayıt yok, Open Library deneniyor", isbn13)
 	} else {
@@ -67,7 +67,7 @@ func Lookup(ctx context.Context, isbn13 string) (*Meta, error) {
 
 	if meta, err := openlibrary.Default().FetchByISBN(ctx, isbn13); err == nil {
 		log.Printf("[bookmeta] %s: Open Library yanıt verdi (%q)", isbn13, meta.Title)
-		return fromOpenLibrary(meta), nil
+		return withCoverFallback(ctx, fromOpenLibrary(meta)), nil
 	} else if errors.Is(err, openlibrary.ErrNotFound) {
 		log.Printf("[bookmeta] %s: Open Library'de de kayıt yok", isbn13)
 	} else {
@@ -81,6 +81,23 @@ func Lookup(ctx context.Context, isbn13 string) (*Meta, error) {
 		return nil, transportErr
 	}
 	return nil, ErrNotFound
+}
+
+// withCoverFallback, kaynak kapak döndürmediyse Open Library'nin kapak
+// servisini dener. Kitabın kaydı bir serviste, kapağı başka serviste
+// olabiliyor; kapaksız kart listede göze batıyor.
+//
+// Ek çağrı yalnızca kapak boşken yapılıyor ve 2 saniyeyle sınırlı;
+// başarısız olursa kapak boş kalır, arama sonucu etkilenmez.
+func withCoverFallback(ctx context.Context, meta *Meta) *Meta {
+	if meta.CoverURL != "" {
+		return meta
+	}
+	if cover := openlibrary.Default().CoverURLForISBN(ctx, meta.ISBN); cover != "" {
+		meta.CoverURL = cover
+		log.Printf("[bookmeta] %s: kapak Open Library'den tamamlandı", meta.ISBN)
+	}
+	return meta
 }
 
 func fromGoogle(meta *googlebooks.BookMeta) *Meta {

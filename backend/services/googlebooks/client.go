@@ -218,9 +218,15 @@ func isbn13s(ids []industryIdentifier) []string {
 	return out
 }
 
-// pickCover, en büyük kapağı seçer ve https'e zorlar. Google thumbnail
-// bağlantılarını http olarak dönüyor; sitenin CSP'si img-src için
-// 'self' data: https: tanımladığı için http bağlantı tarayıcıda bloklanır.
+// pickCover, en büyük kapağı seçer ve kullanılabilir hâle getirir.
+//
+// İki düzeltme şart:
+//   - http -> https: sitenin CSP'si img-src için 'self' data: https:
+//     tanımlı, Google ise thumbnail'leri http olarak dönüyor.
+//   - zoom/edge: arama sonucunda yalnızca thumbnail (zoom=1) geliyor ve o
+//     128x198 piksel — kart için bile bulanık. Aynı uç nokta zoom=2 ile
+//     300x464 (~20 KB) veriyor. edge=curl ise kapağa sahte "kıvrık sayfa"
+//     efekti bindiriyor, atılıyor.
 func pickCover(links imageLinks) string {
 	for _, candidate := range []string{
 		links.ExtraLarge, links.Large, links.Medium,
@@ -233,11 +239,31 @@ func pickCover(links imageLinks) string {
 		if strings.HasPrefix(candidate, "http://") {
 			candidate = "https://" + strings.TrimPrefix(candidate, "http://")
 		}
-		if strings.HasPrefix(candidate, "https://") {
-			return candidate
+		if !strings.HasPrefix(candidate, "https://") {
+			continue
 		}
+		return upgradeCover(candidate)
 	}
 	return ""
+}
+
+// upgradeCover, books.google.com/books/content bağlantısını büyütür.
+// Tanımadığı bir URL'e dokunmaz.
+func upgradeCover(raw string) string {
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	q := parsed.Query()
+	if q.Get("zoom") == "" && !q.Has("edge") {
+		return raw
+	}
+	if zoom := q.Get("zoom"); zoom == "" || zoom == "1" {
+		q.Set("zoom", "2")
+	}
+	q.Del("edge")
+	parsed.RawQuery = q.Encode()
+	return parsed.String()
 }
 
 // stripHTML, Google açıklamalarındaki <p>/<br>/<i> gibi etiketleri atar.

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 )
@@ -42,7 +43,7 @@ const turkishVolume = `{
       "pageCount": 160,
       "language": "tr",
       "imageLinks": {
-        "thumbnail": "http://books.google.com/books/content?id=abc123&zoom=1"
+        "thumbnail": "http://books.google.com/books/content?id=abc123&printsec=frontcover&img=1&zoom=1&edge=curl"
       },
       "industryIdentifiers": [
         {"type": "ISBN_10", "identifier": "9753638029"},
@@ -80,10 +81,31 @@ func TestFetchByISBNParsesTurkishVolume(t *testing.T) {
 		t.Errorf("açıklama = %q, beklenen %q", meta.Description, want)
 	}
 
-	// Kapak https'e yükseltilmeli; CSP http görseli bloklar.
-	wantCover := "https://books.google.com/books/content?id=abc123&zoom=1"
-	if meta.CoverURL != wantCover {
-		t.Errorf("kapak = %q, beklenen %q", meta.CoverURL, wantCover)
+	// Kapak https'e yükseltilmeli (CSP http görseli bloklar), zoom
+	// büyütülmeli (zoom=1 yalnızca 128x198) ve edge=curl atılmalı.
+	cover, err := url.Parse(meta.CoverURL)
+	if err != nil {
+		t.Fatalf("kapak URL'i çözümlenemedi: %v", err)
+	}
+	if cover.Scheme != "https" {
+		t.Errorf("kapak şeması = %q", cover.Scheme)
+	}
+	if got := cover.Query().Get("zoom"); got != "2" {
+		t.Errorf("zoom = %q, beklenen 2", got)
+	}
+	if cover.Query().Has("edge") {
+		t.Errorf("edge parametresi atılmalıydı: %s", meta.CoverURL)
+	}
+	if got := cover.Query().Get("id"); got != "abc123" {
+		t.Errorf("id = %q, korunmalıydı", got)
+	}
+}
+
+// Tanımadığı bir kapak bağlantısına dokunulmamalı.
+func TestPickCoverLeavesForeignURLIntact(t *testing.T) {
+	raw := "https://example.com/kapak.jpg"
+	if got := pickCover(imageLinks{Thumbnail: raw}); got != raw {
+		t.Errorf("kapak = %q, beklenen %q", got, raw)
 	}
 }
 
