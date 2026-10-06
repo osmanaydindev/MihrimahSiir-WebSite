@@ -56,17 +56,23 @@ func Lookup(ctx context.Context, isbn13 string) (*Meta, error) {
 	var transportErr error
 
 	if meta, err := googlebooks.Default().FetchByISBN(ctx, isbn13); err == nil {
+		log.Printf("[bookmeta] %s: Google Books yanıt verdi (%q)", isbn13, meta.Title)
 		return fromGoogle(meta), nil
-	} else if !errors.Is(err, googlebooks.ErrNotFound) {
+	} else if errors.Is(err, googlebooks.ErrNotFound) {
+		log.Printf("[bookmeta] %s: Google Books'ta kayıt yok, Open Library deneniyor", isbn13)
+	} else {
 		transportErr = err
-		log.Printf("[bookmeta] Google Books çağrısı başarısız (%s): %v", isbn13, err)
+		log.Printf("[bookmeta] %s: Google Books çağrısı başarısız: %v", isbn13, err)
 	}
 
 	if meta, err := openlibrary.Default().FetchByISBN(ctx, isbn13); err == nil {
+		log.Printf("[bookmeta] %s: Open Library yanıt verdi (%q)", isbn13, meta.Title)
 		return fromOpenLibrary(meta), nil
-	} else if !errors.Is(err, openlibrary.ErrNotFound) {
+	} else if errors.Is(err, openlibrary.ErrNotFound) {
+		log.Printf("[bookmeta] %s: Open Library'de de kayıt yok", isbn13)
+	} else {
 		transportErr = err
-		log.Printf("[bookmeta] Open Library çağrısı başarısız (%s): %v", isbn13, err)
+		log.Printf("[bookmeta] %s: Open Library çağrısı başarısız: %v", isbn13, err)
 	}
 
 	// Kayıt gerçekten yok mu, yoksa iki servise de ulaşamadık mı? İkisi
